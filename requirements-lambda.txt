@@ -1,0 +1,7 @@
+# Minimal requirements for Lambda function
+SQLAlchemy
+pg8000
+requests
+backoff
+python-dotenv
+boto3

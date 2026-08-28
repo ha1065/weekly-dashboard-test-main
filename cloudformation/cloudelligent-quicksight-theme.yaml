@@ -1,0 +1,114 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Cloudelligent brand theme for Amazon QuickSight.
+  Exports CloudelligentQuickSightThemeArn and CloudelligentQuickSightThemeId
+  for use by the coo-dashboards stack.
+
+Parameters:
+  AwsAccountId:
+    Type: String
+    Description: AWS Account ID
+
+  QuickSightUsername:
+    Type: String
+    Description: QuickSight username (IAM or SSO identity) granted theme access
+
+Resources:
+
+  CloudelligentTheme:
+    Type: AWS::QuickSight::Theme
+    Properties:
+      AwsAccountId: !Ref AwsAccountId
+      ThemeId: cloudelligent-brand-theme
+      Name: Cloudelligent Brand Theme
+      BaseThemeId: CLASSIC
+      Configuration:
+
+        # ------------------------------------------------------------------
+        # Data series colours — official CE brand palette
+        # Source: CE Branding Colors.rtf
+        # ------------------------------------------------------------------
+        DataColorPalette:
+          Colors:
+            - '#0089DD'   # Primary blue (CE brand)
+            - '#FF9B00'   # Orange (CE brand)
+            - '#33A94F'   # Green
+            - '#D74018'   # Red
+            - '#27164F'   # Dark purple (CE brand)
+            - '#00BCD4'   # Cyan
+            - '#FFC107'   # Amber
+            - '#9B59B6'   # Purple
+          EmptyFillColor: '#F4F3F7'
+
+        # ------------------------------------------------------------------
+        # UI chrome — CE dark purple header, white content, blue accent
+        # Source: CE Branding Colors.rtf
+        # ------------------------------------------------------------------
+        UIColorPalette:
+          PrimaryForeground:    '#FFFFFF'
+          PrimaryBackground:    '#27164F'
+          SecondaryForeground:  '#27164F'
+          SecondaryBackground:  '#F4F3F7'
+          Accent:               '#0089DD'
+          AccentForeground:     '#FFFFFF'
+          Danger:               '#D74018'
+          DangerForeground:     '#FFFFFF'
+          Warning:              '#FF9B00'
+          WarningForeground:    '#27164F'
+          Success:              '#33A94F'
+          SuccessForeground:    '#FFFFFF'
+          Dimension:            '#27164F'
+          DimensionForeground:  '#FFFFFF'
+          Measure:              '#0089DD'
+          MeasureForeground:    '#FFFFFF'
+
+        # ------------------------------------------------------------------
+        # Typography — Inter font, CE dark purple (#27164F) for all text
+        # ------------------------------------------------------------------
+        Typography:
+          FontFamilies:
+            - FontFamily: Inter
+            - FontFamily: sans-serif
+            - FontFamily: sans-serif
+
+        # ------------------------------------------------------------------
+        # Sheet tile styling — subtle borders and gutters
+        # ------------------------------------------------------------------
+        Sheet:
+          Tile:
+            Border:
+              Show: true
+          TileLayout:
+            Gutter:
+              Show: true
+            Margin:
+              Show: true
+
+      Permissions:
+        - Principal: !Sub arn:aws:quicksight:${AWS::Region}:${AwsAccountId}:user/default/${QuickSightUsername}
+          Actions:
+            - quicksight:DescribeTheme
+            - quicksight:DescribeThemeAlias
+            - quicksight:ListThemeVersions
+            - quicksight:ListThemeAliases
+            - quicksight:UpdateTheme
+            - quicksight:DeleteTheme
+            - quicksight:CreateThemeAlias
+            - quicksight:DeleteThemeAlias
+            - quicksight:UpdateThemeAlias
+            - quicksight:UpdateThemePermissions
+            - quicksight:DescribeThemePermissions
+
+Outputs:
+
+  CloudelligentQuickSightThemeArn:
+    Description: ARN of the Cloudelligent QuickSight theme
+    Value: !GetAtt CloudelligentTheme.Arn
+    Export:
+      Name: CloudelligentQuickSightThemeArn
+
+  CloudelligentQuickSightThemeId:
+    Description: ID of the Cloudelligent QuickSight theme
+    Value: cloudelligent-brand-theme
+    Export:
+      Name: CloudelligentQuickSightThemeId

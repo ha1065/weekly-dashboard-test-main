@@ -1,0 +1,20 @@
+-- Migration 098: Orphan legacy view audit (2026-06-26)
+--
+-- All 9 candidate views were found in src/database/create_views.sql
+-- and are therefore actively maintained. No views were dropped.
+--
+-- SPICE dataset coverage summary:
+--   vw_practice_group_performance    -> SPICE: practice-group-performance (COMPLETED)
+--   vw_forecast_pivot                -> SPICE: none found
+--   vw_forecast_summary              -> SPICE: vw_forecast_summary / 42098a5b (COMPLETED)
+--   vw_forecast_summary_by_client    -> SPICE: none found
+--   vw_non_billable_project_analysis -> SPICE: non-billable-analysis (COMPLETED)
+--   vw_escalations_by_customer       -> SPICE: escalations-by-customer (COMPLETED)
+--   vw_project_directory             -> SPICE: project-directory (COMPLETED)
+--   vw_customer_status_assignments   -> SPICE: customer-status-assignments (COMPLETED)
+--   vw_mc_v2_audit_grid              -> SPICE: mc-v2-audit-grid (COMPLETED)
+--
+-- vw_forecast_pivot and vw_forecast_summary_by_client have no active SPICE datasets
+-- but both appear in create_views.sql and are retained per drop criteria.
+--
+-- No action required.

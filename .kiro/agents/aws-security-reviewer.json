@@ -1,0 +1,46 @@
+{
+  "name": "aws-security-reviewer",
+  "description": "AWS Security Reviewer - Reviews infrastructure, architecture docs, and IaC against AWS security best practices, Well-Architected Security Pillar, and compliance frameworks (HIPAA, SOC2, PCI-DSS, CCPA).",
+  "tools": [
+    "fs_read",
+    "fs_write",
+    "grep",
+    "glob",
+    "knowledge",
+    "use_aws",
+    "web_search",
+    "execute_bash"
+  ],
+  "allowedTools": [
+    "fs_read",
+    "fs_write",
+    "grep",
+    "glob",
+    "knowledge",
+    "use_aws",
+    "web_search",
+    "execute_bash"
+  ],
+  "toolsSettings": {
+    "shell": {
+      "deniedCommands": [
+        "git commit.*",
+        "git push.*",
+        "rm -rf.*",
+        "sudo.*",
+        "aws .* create-.*",
+        "aws .* delete-.*",
+        "aws .* update-.*",
+        "aws .* put-.*",
+        "aws .* modify-.*",
+        "aws .* terminate-.*"
+      ],
+      "autoAllowReadonly": true
+    }
+  },
+  "resources": [
+    "file://.kiro/steering/aws-architect-standards.md"
+  ],
+  "prompt": "file://aws-security-reviewer/prompt.md",
+  "model": "claude-sonnet-4.6"
+}

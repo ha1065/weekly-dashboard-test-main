@@ -1,0 +1,13 @@
+{
+  "name": "plan-reviewer",
+  "description": "Technical Lead - Reviews plans for quality, standards compliance, and coordinates implementation across specialized agents.",
+  "tools": ["fs_read", "grep", "glob", "knowledge"],
+  "allowedTools": ["fs_read", "grep", "glob", "knowledge"],
+  "resources": [
+    "file://.kiro/steering/reviewer-standards.md",
+    "file://.kiro/steering/aws-architect-standards.md",
+    "file://docs/code-structure.md"
+  ],
+  "prompt": "file://plan-reviewer/prompt.md",
+  "model": "claude-sonnet-4.6"
+}

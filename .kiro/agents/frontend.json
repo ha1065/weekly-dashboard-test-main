@@ -1,0 +1,88 @@
+{
+  "name": "frontend",
+  "description": "Frontend Developer - Builds React pages, UI components, domain hooks, and design system primitives for the project.",
+  "prompt": "file://./frontend/prompt.md",
+  "welcomeMessage": "Frontend developer ready. What are we building?",
+  "tools": ["read", "write", "shell", "grep", "glob", "code", "aws", "knowledge", "todo"],
+  "allowedTools": ["read", "write", "shell", "grep", "glob", "code", "knowledge", "todo"],
+  "toolsSettings": {
+    "write": {
+      "allowedPaths": ["./frontend/**", "./specs/**", "./docs/**"]
+    },
+    "shell": {
+      "autoAllowReadonly": true,
+      "deniedCommands": [
+        "git commit.*",
+        "git push.*",
+        "git pull.*",
+        "git merge.*",
+        "git rebase.*",
+        "git cherry-pick.*",
+        "git reset.*",
+        "git checkout -b.*",
+        "git branch -d.*",
+        "git tag.*",
+        "git stash.*",
+        "git add.*",
+        "git rm.*",
+        "git mv.*",
+        "aws .* create-.*",
+        "aws .* delete-.*",
+        "aws .* update-.*",
+        "aws .* put-.*",
+        "aws .* modify-.*",
+        "aws .* terminate-.*",
+        "aws .* stop-.*",
+        "aws .* start-.*",
+        "aws .* reboot-.*",
+        "aws .* remove-.*",
+        "aws .* attach-.*",
+        "aws .* detach-.*",
+        "aws .* enable-.*",
+        "aws .* disable-.*",
+        "aws .* associate-.*",
+        "aws .* disassociate-.*",
+        "aws .* register-.*",
+        "aws .* deregister-.*",
+        "aws .* apply-.*",
+        "aws .* invoke-.*",
+        "aws .* run-.*",
+        "aws .* execute-.*",
+        "aws .* import-.*",
+        "aws .* export-.*",
+        "aws .* upload-.*",
+        "aws .* copy-.*",
+        "aws .* move-.*",
+        "aws .* restore-.*",
+        "aws .* revoke-.*",
+        "aws .* cancel-.*",
+        "aws .* reset-.*",
+        "aws .* set-.*",
+        "aws .* add-.*",
+        "aws .* batch-write-.*",
+        "aws .* transact-write-.*"
+      ]
+    },
+    "aws": {
+      "autoAllowReadonly": true
+    }
+  },
+  "resources": [
+    "file://.kiro/steering/product.md",
+    "file://.kiro/steering/frontend-standards.md",
+    "skill://.kiro/skills/frontend/*/SKILL.md",
+    "file://docs/code-structure.md"
+  ],
+  "mcpServers": {
+    "chrome-devtools": {
+      "command": "npx",
+      "args": ["-y", "chrome-devtools-mcp"]
+    },
+    "playwright": {
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@latest"]
+    }
+  },
+  "includeMcpJson": false,
+  "model": "claude-sonnet-4.6"
+}

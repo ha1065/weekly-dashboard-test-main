@@ -1,0 +1,79 @@
+{
+  "name": "backend-developer",
+  "description": "Backend Developer - Builds serverless Lambda handlers, PostgreSQL queries, domain services, and co-located infrastructure for the project.",
+  "prompt": "file://./backend-developer/prompt.md",
+  "model": "claude-sonnet-4.6",
+  "welcomeMessage": "Backend developer ready. What are we building?",
+  "tools": ["read", "write", "shell", "grep", "glob", "code", "aws", "knowledge", "todo"],
+  "allowedTools": ["read", "grep", "glob", "code", "knowledge"],
+  "toolsSettings": {
+    "write": {
+      "allowedPaths": ["./backend/**", "./shared/**", "./cloudformation/**", "./migrations/**", "./specs/**", "./docs/**"]
+    },
+    "shell": {
+      "autoAllowReadonly": true,
+      "deniedCommands": [
+        "git commit.*",
+        "git push.*",
+        "git pull.*",
+        "git merge.*",
+        "git rebase.*",
+        "git cherry-pick.*",
+        "git reset.*",
+        "git checkout -b.*",
+        "git branch -d.*",
+        "git tag.*",
+        "git stash.*",
+        "git add.*",
+        "git rm.*",
+        "git mv.*",
+        "aws .* create-.*",
+        "aws .* delete-.*",
+        "aws .* update-.*",
+        "aws .* put-.*",
+        "aws .* modify-.*",
+        "aws .* terminate-.*",
+        "aws .* stop-.*",
+        "aws .* start-.*",
+        "aws .* reboot-.*",
+        "aws .* remove-.*",
+        "aws .* attach-.*",
+        "aws .* detach-.*",
+        "aws .* enable-.*",
+        "aws .* disable-.*",
+        "aws .* associate-.*",
+        "aws .* disassociate-.*",
+        "aws .* register-.*",
+        "aws .* deregister-.*",
+        "aws .* apply-.*",
+        "aws .* invoke-.*",
+        "aws .* run-.*",
+        "aws .* execute-.*",
+        "aws .* import-.*",
+        "aws .* export-.*",
+        "aws .* upload-.*",
+        "aws .* copy-.*",
+        "aws .* move-.*",
+        "aws .* restore-.*",
+        "aws .* revoke-.*",
+        "aws .* cancel-.*",
+        "aws .* reset-.*",
+        "aws .* set-.*",
+        "aws .* add-.*",
+        "aws .* batch-write-.*",
+        "aws .* transact-write-.*"
+      ]
+    },
+    "aws": {
+      "autoAllowReadonly": true
+    }
+  },
+  "resources": [
+    "file://.kiro/steering/product.md",
+    "file://.kiro/steering/backend-standards.md",
+    "file://.kiro/steering/lambda-docs.md",
+    "skill://.kiro/skills/backend/*/SKILL.md",
+    "file://docs/code-structure.md"
+  ],
+  "includeMcpJson": false
+}

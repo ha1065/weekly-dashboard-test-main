@@ -1,0 +1,973 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Secure Weekly Reporting Infrastructure with Clockify Integration
+Parameters:
+  Environment:
+    Type: String
+    Default: production
+    AllowedValues:
+    - production
+    - staging
+    - development
+    Description: Environment name
+  ClockifyAPIKey:
+    Type: String
+    NoEcho: true
+    Description: Clockify API Key (will be stored in Secrets Manager)
+    MinLength: 20
+  ClockifyWorkspaceId:
+    Type: String
+    NoEcho: true
+    Description: Clockify Workspace ID
+    MinLength: 10
+  DatabasePassword:
+    Type: String
+    NoEcho: true
+    Description: Master password for RDS PostgreSQL database
+    MinLength: 16
+    AllowedPattern: ^[a-zA-Z0-9!@#$%^&*()_+\-=\[\]{};:,.<>?]*$
+    ConstraintDescription: Must be at least 16 characters with mixed case, 
+      numbers, and symbols
+  VpcCIDR:
+    Type: String
+    Default: 10.0.0.0/16
+    Description: CIDR block for VPC
+  PrivateSubnet1CIDR:
+    Type: String
+    Default: 10.0.1.0/24
+    Description: CIDR block for private subnet 1
+  PrivateSubnet2CIDR:
+    Type: String
+    Default: 10.0.2.0/24
+    Description: CIDR block for private subnet 2
+  PublicSubnet1CIDR:
+    Type: String
+    Default: 10.0.101.0/24
+    Description: CIDR block for public subnet 1
+  PublicSubnet2CIDR:
+    Type: String
+    Default: 10.0.102.0/24
+    Description: CIDR block for public subnet 2
+  DBInstanceClass:
+    Type: String
+    Default: db.t3.micro
+    AllowedValues:
+    - db.t3.micro
+    - db.t3.small
+    - db.t3.medium
+    - db.r6g.large
+    Description: RDS instance type
+  DBAllocatedStorage:
+    Type: Number
+    Default: 20
+    MinValue: 20
+    MaxValue: 1000
+    Description: Database storage size in GB
+  LambdaCodeBucket:
+    Type: String
+    Description: S3 bucket containing the Lambda deployment package
+    Default: weekly-reporting-production-deployments-604775478093
+  LambdaCodeKey:
+    Type: String
+    Description: S3 key for the Lambda deployment package
+    Default: lambda/lambda-deployment-package.zip
+  QuickSightUserARN:
+    Type: String
+    Default: ''
+    Description: Optional - QuickSight user ARN for database access
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+    - Label:
+        default: Environment Configuration
+      Parameters:
+      - Environment
+    - Label:
+        default: Clockify Integration
+      Parameters:
+      - ClockifyAPIKey
+      - ClockifyWorkspaceId
+    - Label:
+        default: Database Configuration
+      Parameters:
+      - DatabasePassword
+      - DBInstanceClass
+      - DBAllocatedStorage
+    - Label:
+        default: Network Configuration
+      Parameters:
+      - VpcCIDR
+      - PrivateSubnet1CIDR
+      - PrivateSubnet2CIDR
+      - PublicSubnet1CIDR
+      - PublicSubnet2CIDR
+    - Label:
+        default: Automation Configuration
+      Parameters:
+      - ImportSchedule
+    - Label:
+        default: QuickSight Configuration
+      Parameters:
+      - QuickSightUserARN
+Resources:
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock:
+        Ref: VpcCIDR
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags:
+      - Key: Name
+        Value:
+          Fn::Sub: ${Environment}-weekly-reporting-vpc
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+      - Key: Name
+        Value:
+          Fn::Sub: ${Environment}-weekly-reporting-igw
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId:
+        Ref: VPC
+      InternetGatewayId:
+        Ref: InternetGateway
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId:
+        Ref: VPC
+      CidrBlock:
+        Ref: PublicSubnet1CIDR
+      AvailabilityZone:
+        Fn::Select:
+        - 0
+        - Fn::GetAZs: ''
+      MapPublicIpOnLaunch: true
+      Tags:
+      - Key: Name
+        Value:
+          Fn::Sub: ${Environment}-public-subnet-1
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId:
+        Ref: VPC
+      CidrBlock:
+        Ref: PublicSubnet2CIDR
+      AvailabilityZone:
+        Fn::Select:
+        - 1
+        - Fn::GetAZs: ''
+      MapPublicIpOnLaunch: true
+      Tags:
+      - Key: Name
+        Value:
+          Fn::Sub: ${Environment}-public-subnet-2
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId:
+        Ref: VPC
+      CidrBlock:
+        Ref: PrivateSubnet1CIDR
+      AvailabilityZone:
+        Fn::Select:
+        - 0
+        - Fn::GetAZs: ''
+      Tags:
+      - Key: Name
+        Value:
+          Fn::Sub: ${Environment}-private-subnet-1
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId:
+        Ref: VPC
+      CidrBlock:
+        Ref: PrivateSubnet2CIDR
+      AvailabilityZone:
+        Fn::Select:
+        - 1
+        - Fn::GetAZs: ''
+      Tags:
+      - Key: Name
+        Value:
+          Fn::Sub: ${Environment}-private-subnet-2
+  NatGateway1EIP:
+    Type: AWS::EC2::EIP
+    DependsOn: AttachGateway
+    Properties:
+      Domain: vpc
+  NatGateway1:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId:
+        Fn::GetAtt:
+        - NatGateway1EIP
+        - AllocationId
+      SubnetId:
+        Ref: PublicSubnet1
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId:
+        Ref: VPC
+      Tags:
+      - Key: Name
+        Value:
+          Fn::Sub: ${Environment}-public-routes
+  DefaultPublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: AttachGateway
+    Properties:
+      RouteTableId:
+        Ref: PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId:
+        Ref: InternetGateway
+  PublicSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId:
+        Ref: PublicRouteTable
+      SubnetId:
+        Ref: PublicSubnet1
+  PublicSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId:
+        Ref: PublicRouteTable
+      SubnetId:
+        Ref: PublicSubnet2
+  PrivateRouteTable1:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId:
+        Ref: VPC
+      Tags:
+      - Key: Name
+        Value:
+          Fn::Sub: ${Environment}-private-routes-1
+  DefaultPrivateRoute1:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId:
+        Ref: PrivateRouteTable1
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId:
+        Ref: NatGateway1
+  PrivateSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId:
+        Ref: PrivateRouteTable1
+      SubnetId:
+        Ref: PrivateSubnet1
+  PrivateSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId:
+        Ref: PrivateRouteTable1
+      SubnetId:
+        Ref: PrivateSubnet2
+  LambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for Lambda functions
+      VpcId:
+        Ref: VPC
+      SecurityGroupEgress:
+      - IpProtocol: tcp
+        FromPort: 443
+        ToPort: 443
+        CidrIp: 0.0.0.0/0
+        Description: HTTPS for API calls
+      Tags:
+      - Key: Name
+        Value:
+          Fn::Sub: ${Environment}-lambda-sg
+  DatabaseSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for RDS PostgreSQL
+      VpcId:
+        Ref: VPC
+      Tags:
+      - Key: Name
+        Value:
+          Fn::Sub: ${Environment}-database-sg
+  LambdaToDatabaseEgress:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId:
+        Ref: LambdaSecurityGroup
+      IpProtocol: tcp
+      FromPort: 5432
+      ToPort: 5432
+      DestinationSecurityGroupId:
+        Ref: DatabaseSecurityGroup
+      Description: PostgreSQL to RDS
+  DatabaseFromLambdaIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId:
+        Ref: DatabaseSecurityGroup
+      IpProtocol: tcp
+      FromPort: 5432
+      ToPort: 5432
+      SourceSecurityGroupId:
+        Ref: LambdaSecurityGroup
+      Description: Allow from Lambda
+  DatabaseQuickSightIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Condition: HasQuickSightUser
+    Properties:
+      GroupId:
+        Ref: DatabaseSecurityGroup
+      IpProtocol: tcp
+      FromPort: 5432
+      ToPort: 5432
+      CidrIp: 52.23.63.224/27
+      Description: QuickSight US-EAST-1 IP range
+  ApplicationSecrets:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name:
+        Fn::Sub: ${Environment}/weekly-reporting/secrets
+      Description: Secrets for Weekly Reporting application
+      SecretString:
+        Fn::Sub: "{\n  \"clockify_api_key\": \"${ClockifyAPIKey}\",\n  \"clockify_workspace_id\"\
+          : \"${ClockifyWorkspaceId}\",\n  \"db_password\": \"${DatabasePassword}\"\
+          \n}\n"
+      Tags:
+      - Key: Environment
+        Value:
+          Ref: Environment
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Subnet group for RDS database
+      SubnetIds:
+      - Ref: PrivateSubnet1
+      - Ref: PrivateSubnet2
+      Tags:
+      - Key: Name
+        Value:
+          Fn::Sub: ${Environment}-db-subnet-group
+  Database:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Snapshot
+    UpdateReplacePolicy: Snapshot
+    Properties:
+      DBInstanceIdentifier:
+        Fn::Sub: ${Environment}-weekly-reporting
+      DBName: weekly_reporting
+      Engine: postgres
+      EngineVersion: '15'
+      DBInstanceClass:
+        Ref: DBInstanceClass
+      AllocatedStorage:
+        Ref: DBAllocatedStorage
+      StorageType: gp3
+      StorageEncrypted: true
+      MasterUsername: postgres
+      MasterUserPassword:
+        Ref: DatabasePassword
+      VPCSecurityGroups:
+      - Ref: DatabaseSecurityGroup
+      DBSubnetGroupName:
+        Ref: DBSubnetGroup
+      BackupRetentionPeriod: 7
+      PreferredBackupWindow: 03:00-04:00
+      PreferredMaintenanceWindow: sun:04:00-sun:05:00
+      MultiAZ: false
+      PubliclyAccessible: false
+      EnableCloudwatchLogsExports:
+      - postgresql
+      DeletionProtection: true
+      Tags:
+      - Key: Name
+        Value:
+          Fn::Sub: ${Environment}-weekly-reporting-db
+      - Key: Environment
+        Value:
+          Ref: Environment
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName:
+        Fn::Sub: ${Environment}-lambda-execution-role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: lambda.amazonaws.com
+          Action: sts:AssumeRole
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+      Policies:
+      - PolicyName: SecretsManagerAccess
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - secretsmanager:GetSecretValue
+            Resource:
+              Ref: ApplicationSecrets
+      - PolicyName: CloudWatchLogs
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            Resource:
+              Fn::Sub: 
+                arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*
+      - PolicyName: QuickSightRefresh
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - quicksight:CreateIngestion
+            - quicksight:DescribeDataSet
+            - quicksight:ListIngestions
+            Resource:
+              Fn::Sub: 
+                arn:aws:quicksight:${AWS::Region}:${AWS::AccountId}:dataset/*
+          - Effect: Allow
+            Action:
+            - quicksight:UpdateAnalysis
+            - quicksight:DescribeAnalysis
+            - quicksight:DescribeAnalysisDefinition
+            Resource:
+              Fn::Sub: 
+                arn:aws:quicksight:${AWS::Region}:${AWS::AccountId}:analysis/*
+      - PolicyName: SSMParameterAccess
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - ssm:GetParameter
+            - ssm:GetParameters
+            Resource:
+              Fn::Sub: 
+                arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${Environment}/weekly-reporting/*
+      - PolicyName: BedrockInvokeModel
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - bedrock:InvokeModel
+            - bedrock-runtime:InvokeModel
+            - bedrock:Converse
+            - bedrock-runtime:Converse
+            Resource:
+            - arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-*
+            - arn:aws:bedrock:us-east-2::foundation-model/anthropic.claude-*
+            - arn:aws:bedrock:us-west-2::foundation-model/anthropic.claude-*
+            - arn:aws:bedrock:us-east-1:961341524729:inference-profile/*
+            - arn:aws:bedrock:us-east-2:961341524729:inference-profile/*
+            - arn:aws:bedrock:us-west-2:961341524729:inference-profile/*
+      - PolicyName: SESendEmail
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - ses:SendEmail
+            - ses:ListEmailIdentities
+            - sesv2:SendEmail
+            - sesv2:ListEmailIdentities
+            Resource: '*'
+  ImportLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName:
+        Fn::Sub: ${Environment}-clockify-import
+      Description: Import data from Clockify to RDS PostgreSQL
+      Runtime: python3.11
+      Handler: src.lambda_handler.lambda_handler
+      Role:
+        Fn::GetAtt:
+        - LambdaExecutionRole
+        - Arn
+      Timeout: 900
+      MemorySize: 512
+      Environment:
+        Variables:
+          ENVIRONMENT:
+            Ref: Environment
+          SECRET_NAME:
+            Ref: ApplicationSecrets
+          DB_ENDPOINT_PARAMETER:
+            Fn::Sub: /${Environment}/weekly-reporting/db-endpoint
+          DB_PORT: '5432'
+          DB_NAME: weekly_reporting
+          DB_USER: report_user
+      VpcConfig:
+        SecurityGroupIds:
+        - Ref: LambdaSecurityGroup
+        SubnetIds:
+        - Ref: PrivateSubnet1
+        - Ref: PrivateSubnet2
+      Code:
+        S3Bucket:
+          Ref: LambdaCodeBucket
+        S3Key:
+          Ref: LambdaCodeKey
+      Tags:
+      - Key: Environment
+        Value:
+          Ref: Environment
+  DBEndpointParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name:
+        Fn::Sub: /${Environment}/weekly-reporting/db-endpoint
+      Type: String
+      Value:
+        Fn::GetAtt:
+        - Database
+        - Endpoint.Address
+      Description: RDS database endpoint address
+  ImportLambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/lambda/${Environment}-clockify-import
+      RetentionInDays: 30
+  ImportScheduleRule9AM:
+    Type: AWS::Events::Rule
+    Properties:
+      Name:
+        Fn::Sub: ${Environment}-weekly-import-9am-ct
+      Description: Clockify weekly import at 9 AM CDT every Monday
+      ScheduleExpression: cron(0 14 ? * MON *)
+      State: ENABLED
+      Targets:
+      - Arn:
+          Fn::GetAtt:
+          - ImportLambdaFunction
+          - Arn
+        Id: ImportLambdaTarget9AM
+        Input: '{"mode":"weekly","weeks_back":2,"notify":true,"refresh_quicksight":true,"quicksight_dataset_ids":["kpi-weekly-snapshots-prod","ps-project-status-view","productive-utilization","clockify-missing-time-submissions-prod","clockify-missing-time-submissions","escalations-detail","ps-stage-trend","project-hours-summary-prod","project-hours-current-week-prod","mc-ticket-activity","mc-projects-at-risk","ps-projects-at-risk","time-compliance-current-week","missing-time-history"]}'
+  ImportSchedulePermission9AM:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName:
+        Ref: ImportLambdaFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn:
+        Fn::GetAtt:
+        - ImportScheduleRule9AM
+        - Arn
+  ImportScheduleRuleNoon:
+    Type: AWS::Events::Rule
+    Properties:
+      Name:
+        Fn::Sub: ${Environment}-weekly-import-noon-ct
+      Description: Clockify incremental import + KPI snapshot at noon CDT every 
+        Monday
+      ScheduleExpression: cron(0 17 ? * MON *)
+      State: ENABLED
+      Targets:
+      - Arn:
+          Fn::GetAtt:
+          - ImportLambdaFunction
+          - Arn
+        Id: ImportLambdaTargetNoon
+        Input: '{"mode":"incremental","snapshot_kpis":true,"notify":true,"refresh_quicksight":true,"quicksight_dataset_ids":["kpi-weekly-snapshots-prod","ps-project-status-view","productive-utilization","clockify-missing-time-submissions-prod","clockify-missing-time-submissions","escalations-detail","ps-stage-trend","project-hours-summary-prod","project-hours-current-week-prod","mc-ticket-activity","mc-projects-at-risk","ps-projects-at-risk","time-compliance-current-week","missing-time-history"]}'
+  ImportSchedulePermissionNoon:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName:
+        Ref: ImportLambdaFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn:
+        Fn::GetAtt:
+        - ImportScheduleRuleNoon
+        - Arn
+  JiraDailyRefreshRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name:
+        Fn::Sub: ${Environment}-jira-daily-refresh
+      Description: Daily Jira import at 10 AM UTC
+      ScheduleExpression: cron(0 10 ? * * *)
+      State: ENABLED
+      Targets:
+      - Arn:
+          Fn::GetAtt:
+          - ImportLambdaFunction
+          - Arn
+        Id: JiraDailyRefreshTarget
+        Input: '{"mode":"jira_import","refresh_quicksight":true,"quicksight_dataset_ids":["ps-project-status-view","escalations-detail","mc-ticket-activity","mc-projects-at-risk","ps-projects-at-risk"]}'
+  JiraDailyRefreshPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName:
+        Ref: ImportLambdaFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn:
+        Fn::GetAtt:
+        - JiraDailyRefreshRule
+        - Arn
+  ComplianceEmailRule9AM:
+    Type: AWS::Events::Rule
+    Properties:
+      Name:
+        Fn::Sub: ${Environment}-compliance-email-930am-ct
+      Description: Send compliance email at 9:30 AM CDT every Monday
+      ScheduleExpression: cron(30 14 ? * MON *)
+      State: ENABLED
+      Targets:
+      - Arn:
+          Fn::GetAtt:
+          - ImportLambdaFunction
+          - Arn
+        Id: ComplianceEmailTarget9AM
+        Input: '{"mode":"send_compliance_report","run":"morning"}'
+  ComplianceEmailPermission9AM:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName:
+        Ref: ImportLambdaFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn:
+        Fn::GetAtt:
+        - ComplianceEmailRule9AM
+        - Arn
+  ComplianceEmailRuleNoon:
+    Type: AWS::Events::Rule
+    Properties:
+      Name:
+        Fn::Sub: ${Environment}-compliance-email-1230pm-ct
+      Description: Send compliance email at 12:30 PM CDT every Monday
+      ScheduleExpression: cron(30 17 ? * MON *)
+      State: ENABLED
+      Targets:
+      - Arn:
+          Fn::GetAtt:
+          - ImportLambdaFunction
+          - Arn
+        Id: ComplianceEmailTargetNoon
+        Input: '{"mode":"send_compliance_report","run":"noon"}'
+  ComplianceEmailPermissionNoon:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName:
+        Ref: ImportLambdaFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn:
+        Fn::GetAtt:
+        - ComplianceEmailRuleNoon
+        - Arn
+  ComplianceEmailRuleAfternoon:
+    Type: AWS::Events::Rule
+    Properties:
+      Name:
+        Fn::Sub: ${Environment}-compliance-email-230pm-ct
+      Description: Send compliance email at 2:30 PM CDT every Monday
+      ScheduleExpression: cron(30 19 ? * MON *)
+      State: ENABLED
+      Targets:
+      - Arn:
+          Fn::GetAtt:
+          - ImportLambdaFunction
+          - Arn
+        Id: ComplianceEmailTargetAfternoon
+        Input: '{"mode":"send_compliance_report","run":"afternoon"}'
+  ComplianceEmailPermissionAfternoon:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName:
+        Ref: ImportLambdaFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn:
+        Fn::GetAtt:
+        - ComplianceEmailRuleAfternoon
+        - Arn
+  SPICEErrorMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    DependsOn: ImportLambdaFunction
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/lambda/${Environment}-clockify-import
+      FilterName: weekly-reporting-spice-errors
+      FilterPattern: ?"SPICE refresh failed" ?"ingestion failed" 
+        ?"CreateIngestion error" ?"Failed to refresh dataset" ?"dataset refresh 
+        failed"
+      MetricTransformations:
+      - MetricName: SPICEErrors
+        MetricNamespace: WeeklyReporting
+        MetricValue: '1'
+        DefaultValue: 0
+  ImportErrorMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    DependsOn: ImportLambdaFunction
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/lambda/${Environment}-clockify-import
+      FilterName: weekly-reporting-import-errors
+      FilterPattern: ?ERROR ?Exception ?"import failed" ?"Import failed" 
+        ?Traceback ?"raise " ?CRITICAL
+      MetricTransformations:
+      - MetricName: ImportErrors
+        MetricNamespace: WeeklyReporting
+        MetricValue: '1'
+        DefaultValue: 0
+  ImportLambdaErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    DependsOn: ImportLambdaFunction
+    Properties:
+      AlarmName:
+        Fn::Sub: ${Environment}-import-lambda-errors
+      AlarmDescription: Alert when import Lambda fails
+      MetricName: Errors
+      Namespace: AWS/Lambda
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+      - Name: FunctionName
+        Value:
+          Fn::Sub: ${Environment}-clockify-import
+      TreatMissingData: notBreaching
+      AlarmActions:
+      - Ref: NotificationTopic
+      OKActions:
+      - Ref: NotificationTopic
+  LambdaDurationWarningAlarm:
+    Type: AWS::CloudWatch::Alarm
+    DependsOn: ImportLambdaFunction
+    Properties:
+      AlarmName: weekly-reporting-lambda-duration-warning
+      AlarmDescription: Lambda production-clockify-import is approaching 15-min 
+        timeout (duration > 800s)
+      MetricName: Duration
+      Namespace: AWS/Lambda
+      Statistic: Maximum
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 800000
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+      - Name: FunctionName
+        Value:
+          Fn::Sub: ${Environment}-clockify-import
+      TreatMissingData: notBreaching
+      AlarmActions:
+      - Ref: NotificationTopic
+  LambdaNotInvokedAlarm:
+    Type: AWS::CloudWatch::Alarm
+    DependsOn: ImportLambdaFunction
+    Properties:
+      AlarmName: weekly-reporting-lambda-not-invoked
+      AlarmDescription: Lambda had 0 invocations in last 7 days — weekly import 
+        may have been missed or EventBridge rule is disabled
+      MetricName: Invocations
+      Namespace: AWS/Lambda
+      Statistic: Sum
+      Period: 604800
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: LessThanThreshold
+      Dimensions:
+      - Name: FunctionName
+        Value:
+          Fn::Sub: ${Environment}-clockify-import
+      TreatMissingData: breaching
+      AlarmActions:
+      - Ref: NotificationTopic
+  LambdaConcurrentExecutionsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    DependsOn: ImportLambdaFunction
+    Properties:
+      AlarmName: weekly-reporting-lambda-concurrent-executions
+      AlarmDescription: Lambda had concurrent executions — possible duplicate 
+        EventBridge target
+      MetricName: ConcurrentExecutions
+      Namespace: AWS/Lambda
+      Statistic: Maximum
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 2
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+      - Name: FunctionName
+        Value:
+          Fn::Sub: ${Environment}-clockify-import
+      TreatMissingData: notBreaching
+      AlarmActions:
+      - Ref: NotificationTopic
+  SPICEFailureAlarm:
+    Type: AWS::CloudWatch::Alarm
+    DependsOn: SPICEErrorMetricFilter
+    Properties:
+      AlarmName: weekly-reporting-spice-failure
+      AlarmDescription: SPICE ingestion error detected in Lambda logs — 
+        QuickSight datasets may not have refreshed
+      MetricName: SPICEErrors
+      Namespace: WeeklyReporting
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+      - Ref: NotificationTopic
+  ImportErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    DependsOn: ImportErrorMetricFilter
+    Properties:
+      AlarmName: weekly-reporting-import-errors
+      AlarmDescription: Error pattern detected in weekly-reporting import Lambda
+        logs (3+ errors in 5 min)
+      MetricName: ImportErrors
+      Namespace: WeeklyReporting
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 3
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+      - Ref: NotificationTopic
+  DatabaseCPUAlarm:
+    Type: AWS::CloudWatch::Alarm
+    DependsOn: Database
+    Properties:
+      AlarmName:
+        Fn::Sub: ${Environment}-database-high-cpu
+      AlarmDescription: Alert when database CPU is high
+      MetricName: CPUUtilization
+      Namespace: AWS/RDS
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 80
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+      - Name: DBInstanceIdentifier
+        Value:
+          Fn::Sub: ${Environment}-weekly-reporting
+      TreatMissingData: notBreaching
+  DatabaseStorageAlarm:
+    Type: AWS::CloudWatch::Alarm
+    DependsOn: Database
+    Properties:
+      AlarmName:
+        Fn::Sub: ${Environment}-database-low-storage
+      AlarmDescription: Alert when database storage is low
+      MetricName: FreeStorageSpace
+      Namespace: AWS/RDS
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 5000000000
+      ComparisonOperator: LessThanThreshold
+      Dimensions:
+      - Name: DBInstanceIdentifier
+        Value:
+          Fn::Sub: ${Environment}-weekly-reporting
+      TreatMissingData: notBreaching
+  NotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName:
+        Fn::Sub: ${Environment}-weekly-reporting-notifications
+      DisplayName: Weekly Reporting Notifications
+      Tags:
+      - Key: Environment
+        Value:
+          Ref: Environment
+Conditions:
+  HasQuickSightUser:
+    Fn::Not:
+    - Fn::Equals:
+      - Ref: QuickSightUserARN
+      - ''
+Outputs:
+  VPCId:
+    Description: VPC ID
+    Value:
+      Ref: VPC
+    Export:
+      Name:
+        Fn::Sub: ${Environment}-vpc-id
+  DatabaseEndpoint:
+    Description: RDS database endpoint
+    Value:
+      Fn::GetAtt:
+      - Database
+      - Endpoint.Address
+    Export:
+      Name:
+        Fn::Sub: ${Environment}-database-endpoint
+  DatabasePort:
+    Description: RDS database port
+    Value:
+      Fn::GetAtt:
+      - Database
+      - Endpoint.Port
+  SecretsManagerARN:
+    Description: Secrets Manager ARN
+    Value:
+      Ref: ApplicationSecrets
+    Export:
+      Name:
+        Fn::Sub: ${Environment}-secrets-arn
+  LambdaFunctionARN:
+    Description: Import Lambda function ARN
+    Value:
+      Fn::GetAtt:
+      - ImportLambdaFunction
+      - Arn
+    Export:
+      Name:
+        Fn::Sub: ${Environment}-import-lambda-arn
+  LambdaSecurityGroupId:
+    Description: Lambda security group ID
+    Value:
+      Ref: LambdaSecurityGroup
+    Export:
+      Name:
+        Fn::Sub: ${Environment}-lambda-sg-id
+  DatabaseSecurityGroupId:
+    Description: Database security group ID
+    Value:
+      Ref: DatabaseSecurityGroup
+    Export:
+      Name:
+        Fn::Sub: ${Environment}-database-sg-id
+  NotificationTopicARN:
+    Description: SNS topic ARN for notifications
+    Value:
+      Ref: NotificationTopic
+    Export:
+      Name:
+        Fn::Sub: ${Environment}-notification-topic-arn
+  QuickSightConnectionString:
+    Description: Connection string for QuickSight (use secrets for password)
+    Value:
+      Fn::Sub: postgresql://${Database.Endpoint.Address}:5432/weekly_reporting

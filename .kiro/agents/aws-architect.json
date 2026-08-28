@@ -1,0 +1,141 @@
+{
+  "name": "aws-architect",
+  "env": {
+    "AWS_PROFILE": "AWSAdministratorAccess-961341524729",
+    "AWS_DEFAULT_REGION": "us-east-1"
+  },
+  "description": "AWS Solutions Architect - Expert in AWS infrastructure analysis, architecture evaluation, and solution design. Provides architectural guidance without implementation.",
+  "mcpServers": {
+    "awslabs-aws-pricing-mcp-server": {
+      "type": "stdio",
+      "command": "bash",
+      "args": [
+        "-c",
+        "command -v uvx >/dev/null 2>&1 || { curl -LsSf https://astral.sh/uv/install.sh | sh && export PATH=\"$HOME/.local/bin:$PATH\"; }; uvx awslabs.aws-pricing-mcp-server@latest"
+      ],
+      "env": {
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      },
+      "timeout": 30000,
+      "disabled": false,
+      "autoApprove": ["*"]
+    },
+    "awslabs.aws-diagram-mcp-server": {
+      "command": "bash",
+      "args": [
+        "-c",
+        "command -v uvx >/dev/null 2>&1 || { curl -LsSf https://astral.sh/uv/install.sh | sh && export PATH=\"$HOME/.local/bin:$PATH\"; }; uvx awslabs.aws-diagram-mcp-server"
+      ],
+      "env": {
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      },
+      "disabled": false,
+      "autoApprove": ["*"]
+    },
+    "awslabs.aws-documentation-mcp-server": {
+      "command": "bash",
+      "args": [
+        "-c",
+        "command -v uvx >/dev/null 2>&1 || { curl -LsSf https://astral.sh/uv/install.sh | sh && export PATH=\"$HOME/.local/bin:$PATH\"; }; uvx awslabs.aws-documentation-mcp-server"
+      ],
+      "env": {
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      },
+      "disabled": false,
+      "autoApprove": ["*"]
+    }
+  },
+  "tools": [
+    "fs_read",
+    "fs_write",
+    "grep",
+    "glob",
+    "knowledge",
+    "use_aws",
+    "web_search",
+    "web_browse",
+    "execute_bash",
+    "@awslabs-aws-pricing-mcp-server",
+    "@awslabs.aws-diagram-mcp-server",
+    "@awslabs.aws-documentation-mcp-server"
+  ],
+  "allowedTools": [
+    "fs_read",
+    "fs_write",
+    "grep",
+    "glob",
+    "knowledge",
+    "use_aws",
+    "web_search",
+    "web_browse",
+    "execute_bash",
+    "@awslabs-aws-pricing-mcp-server",
+    "@awslabs.aws-diagram-mcp-server",
+    "@awslabs.aws-documentation-mcp-server"
+  ],
+  "toolsSettings": {
+    "shell": {
+      "deniedCommands": [
+        "git commit.*",
+        "git push.*",
+        "git pull.*",
+        "git merge.*",
+        "git rebase.*",
+        "git cherry-pick.*",
+        "git reset.*",
+        "git checkout -b.*",
+        "git branch -d.*",
+        "git tag.*",
+        "git stash.*",
+        "git add.*",
+        "git rm.*",
+        "git mv.*",
+        "rm -rf.*",
+        "sudo.*",
+        "aws .* create-.*",
+        "aws .* delete-.*",
+        "aws .* update-.*",
+        "aws .* put-.*",
+        "aws .* modify-.*",
+        "aws .* terminate-.*",
+        "aws .* stop-.*",
+        "aws .* start-.*",
+        "aws .* reboot-.*",
+        "aws .* remove-.*",
+        "aws .* attach-.*",
+        "aws .* detach-.*",
+        "aws .* enable-.*",
+        "aws .* disable-.*",
+        "aws .* associate-.*",
+        "aws .* disassociate-.*",
+        "aws .* register-.*",
+        "aws .* deregister-.*",
+        "aws .* apply-.*",
+        "aws .* invoke-.*",
+        "aws .* run-.*",
+        "aws .* execute-.*",
+        "aws .* import-.*",
+        "aws .* export-.*",
+        "aws .* upload-.*",
+        "aws .* copy-.*",
+        "aws .* move-.*",
+        "aws .* restore-.*",
+        "aws .* revoke-.*",
+        "aws .* cancel-.*",
+        "aws .* reset-.*",
+        "aws .* set-.*",
+        "aws .* add-.*",
+        "aws .* batch-write-.*",
+        "aws .* transact-write-.*"
+      ],
+      "autoAllowReadonly": true
+    }
+  },
+  "resources": [
+    "file://.kiro/steering/aws-architect-standards.md",
+    "file://.kiro/steering/lambda-docs.md",
+    "file://docs/code-structure.md"
+  ],
+  "prompt": "file://aws-architect/prompt.md",
+  "model": "claude-sonnet-4.6"
+}

@@ -1,0 +1,93 @@
+# Python
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Environment
+.env
+.env.local
+
+# Database
+*.db
+*.sqlite
+
+# Data
+data/uploads/*
+data/outputs/*
+!data/uploads/.gitkeep
+!data/outputs/.gitkeep
+
+# Logs
+logs/*
+!logs/.gitkeep
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+# Lambda deployment artifacts
+*.zip
+lambda_package/
+lambda_package_min/
+lambda_package_temp/
+lambda-deployment-package.zip
+lambda-deployment-package-backup.zip
+lambda-min.zip
+lambda_function.zip
+lambda_update.zip
+
+# Build artifacts
+weekly-reporting.zip
+
+# AWS tooling
+sessionmanager-bundle/
+sessionmanager-bundle.zip
+
+# Data files
+*.xlsx
+*.csv
+
+# Misc
+cd/
+
+# Deployment artifacts
+lambda-deployment-package-coo.zip
+lambda-deployment-package-working.zip
+
+# Generated/reference files
+utilization_dashboard_cloudelligent_branded.html
+CE Branding Colors.rtf
+
+# Windows Zone.Identifier files
+*Zone.Identifier
+.kiro/.cli_bash_history
+coo-analysis-live.json
+
+# --- Security: never commit private keys or credentials ---
+*.pem
+*.key
+*.ppk
+weekly-reporting-bastion-key.pem
+
+# --- Vendored Lambda dependencies (build output, not source) ---
+# lambda_contents/ contains pip-installed third-party packages + a copy of the
+# original monolith kept only as a local test reference. Not source-controlled.
+lambda_contents/
+
+# Option B: keep the original-monolith reference for equivalence tests,
+# but continue ignoring the vendored third-party packages.
+!lambda_contents/
+!lambda_contents/src/
+!lambda_contents/src/lambda_handler.py
+lambda_contents/*
+!lambda_contents/src
+lambda_contents/src/*
+!lambda_contents/src/lambda_handler.py

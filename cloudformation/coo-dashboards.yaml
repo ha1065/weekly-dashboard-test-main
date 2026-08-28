@@ -1,0 +1,3522 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: COO Dashboards — Cloudelligent Operations. Synced from live QuickSight
+  analysis. DO NOT EDIT MANUALLY — regenerate with scripts/sync_coo_dashboard_iac.py
+Parameters:
+  Environment:
+    Type: String
+    Default: prod
+    AllowedValues:
+    - dev
+    - staging
+    - prod
+  QuickSightUsername:
+    Type: String
+    Description: QuickSight email-based username (for ARN)
+  QuickSightOwnerArn:
+    Type: String
+    Description: Full QuickSight user ARN for owner permissions
+  AwsAccountId:
+    Type: String
+    Description: AWS Account ID
+Resources:
+  CooOperationalAnalysis:
+    Type: AWS::QuickSight::Analysis
+    Properties:
+      AwsAccountId:
+        Ref: AwsAccountId
+      AnalysisId:
+        Fn::Sub: coo-operational-analysis-${Environment}
+      Name:
+        Fn::Sub: COO Operational Analysis (${Environment})
+      ThemeArn:
+        Fn::ImportValue: CloudelligentQuickSightThemeArn
+      Definition:
+        DataSetIdentifierDeclarations:
+        - Identifier: escalations
+          DataSetArn: arn:aws:quicksight:us-east-1:961341524729:dataset/escalations-detail
+        - Identifier: capacity_plan
+          DataSetArn: arn:aws:quicksight:us-east-1:961341524729:dataset/resource-capacity-plan
+        - Identifier: util_history
+          DataSetArn: arn:aws:quicksight:us-east-1:961341524729:dataset/utilization-history
+        - Identifier: project_hours_summary
+          DataSetArn: arn:aws:quicksight:us-east-1:961341524729:dataset/project-hours-summary-prod
+        - Identifier: mc_activity
+          DataSetArn: arn:aws:quicksight:us-east-1:961341524729:dataset/mc-ticket-activity
+        - Identifier: ps_at_risk
+          DataSetArn: arn:aws:quicksight:us-east-1:961341524729:dataset/ps-projects-at-risk
+        - Identifier: productive_util
+          DataSetArn: arn:aws:quicksight:us-east-1:961341524729:dataset/productive-utilization
+        - Identifier: compliance_history
+          DataSetArn: arn:aws:quicksight:us-east-1:961341524729:dataset/time-compliance-history
+        - Identifier: ps_stage
+          DataSetArn: arn:aws:quicksight:us-east-1:961341524729:dataset/ps-stage-trend
+        - Identifier: compliance
+          DataSetArn: arn:aws:quicksight:us-east-1:961341524729:dataset/clockify-missing-time-submissions-prod
+        - Identifier: mc_at_risk
+          DataSetArn: arn:aws:quicksight:us-east-1:961341524729:dataset/mc-projects-at-risk
+        - Identifier: ps_projects
+          DataSetArn: arn:aws:quicksight:us-east-1:961341524729:dataset/ps-project-status-view
+        - Identifier: kpi_snapshots
+          DataSetArn: arn:aws:quicksight:us-east-1:961341524729:dataset/kpi-weekly-snapshots-prod
+        Sheets:
+        - SheetId: sheet-weekly-pulse
+          Name: Weekly Pulse
+          ParameterControls:
+          - DateTimePicker:
+              ParameterControlId: ctrl-week-s1
+              Title: Reporting Week
+              SourceParameterName: pWeekStart
+              DisplayOptions:
+                TitleOptions:
+                  Visibility: VISIBLE
+                  FontConfiguration:
+                    FontSize:
+                      Relative: MEDIUM
+                DateTimeFormat: YYYY-MM-DD
+          Visuals:
+          - KPIVisual:
+              VisualId: kpi-billable-util
+              Title:
+                Visibility: VISIBLE
+                FormatText:
+                  PlainText: Billable Utilization
+              Subtitle:
+                Visibility: VISIBLE
+              ChartConfiguration:
+                FieldWells:
+                  Values:
+                  - NumericalMeasureField:
+                      FieldId: kpi-billable-util-v
+                      Column:
+                        DataSetIdentifier: kpi_snapshots
+                        ColumnName: billable_util_pct
+                      AggregationFunction:
+                        SimpleNumericalAggregation: MAX
+                  TargetValues:
+                  - NumericalMeasureField:
+                      FieldId: kpi-billable-util-target
+                      Column:
+                        DataSetIdentifier: kpi_snapshots
+                        ColumnName: billable_util_prev
+                      AggregationFunction:
+                        SimpleNumericalAggregation: MAX
+                  TrendGroups: []
+                SortConfiguration: {}
+                KPIOptions:
+                  Comparison:
+                    ComparisonMethod: DIFFERENCE
+                  PrimaryValueDisplayType: ACTUAL
+                  Sparkline:
+                    Visibility: HIDDEN
+                    Type: LINE
+                    TooltipVisibility: HIDDEN
+              Actions: []
+              ColumnHierarchies: []
+          - KPIVisual:
+              VisualId: kpi-productive-util
+              Title:
+                Visibility: VISIBLE
+                FormatText:
+                  PlainText: Productive Utilization
+              Subtitle:
+                Visibility: VISIBLE
+              ChartConfiguration:
+                FieldWells:
+                  Values:
+                  - NumericalMeasureField:
+                      FieldId: kpi-productive-util-v
+                      Column:
+                        DataSetIdentifier: kpi_snapshots
+                        ColumnName: productive_util_pct
+                      AggregationFunction:
+                        SimpleNumericalAggregation: MAX
+                  TargetValues:
+                  - NumericalMeasureField:
+                      FieldId: kpi-productive-util-target
+                      Column:
+                        DataSetIdentifier: kpi_snapshots
+                        ColumnName: productive_util_prev
+                      AggregationFunction:
+                        SimpleNumericalAggregation: MAX
+                  TrendGroups: []
+                SortConfiguration: {}
+                KPIOptions:
+                  Comparison:
+                    ComparisonMethod: DIFFERENCE
+                  PrimaryValueDisplayType: ACTUAL
+                  Sparkline:
+                    Visibility: HIDDEN
+                    Type: LINE
+                    TooltipVisibility: HIDDEN
+              Actions: []
+              ColumnHierarchies: []
+          - KPIVisual:
+              VisualId: kpi-compliance
+              Title:
+                Visibility: VISIBLE
+                FormatText:
+                  PlainText: Time Compliance
+              Subtitle:
+                Visibility: VISIBLE
+              ChartConfiguration:
+                FieldWells:
+                  Values:
+                  - NumericalMeasureField:
+                      FieldId: kpi-compliance-v
+                      Column:
+                        DataSetIdentifier: kpi_snapshots
+                        ColumnName: time_compliance_pct
+                      AggregationFunction:
+                        SimpleNumericalAggregation: MAX
+                  TargetValues:
+                  - NumericalMeasureField:
+                      FieldId: kpi-compliance-target
+                      Column:
+                        DataSetIdentifier: kpi_snapshots
+                        ColumnName: compliance_prev
+                      AggregationFunction:
+                        SimpleNumericalAggregation: MAX
+                  TrendGroups: []
+                SortConfiguration: {}
+                KPIOptions:
+                  Comparison:
+                    ComparisonMethod: DIFFERENCE
+                  PrimaryValueDisplayType: ACTUAL
+                  Sparkline:
+                    Visibility: HIDDEN
+                    Type: LINE
+                    TooltipVisibility: HIDDEN
+              Actions: []
+              ColumnHierarchies: []
+          - KPIVisual:
+              VisualId: kpi-headcount
+              Title:
+                Visibility: VISIBLE
+                FormatText:
+                  PlainText: Active Headcount
+              Subtitle:
+                Visibility: VISIBLE
+              ChartConfiguration:
+                FieldWells:
+                  Values:
+                  - NumericalMeasureField:
+                      FieldId: kpi-headcount-v
+                      Column:
+                        DataSetIdentifier: kpi_snapshots
+                        ColumnName: active_resource_count
+                      AggregationFunction:
+                        SimpleNumericalAggregation: MAX
+                  TargetValues:
+                  - NumericalMeasureField:
+                      FieldId: kpi-headcount-target
+                      Column:
+                        DataSetIdentifier: kpi_snapshots
+                        ColumnName: headcount_prev
+                      AggregationFunction:
+                        SimpleNumericalAggregation: MAX
+                  TrendGroups: []
+                SortConfiguration: {}
+                KPIOptions:
+                  Comparison:
+                    ComparisonMethod: DIFFERENCE
+                  PrimaryValueDisplayType: ACTUAL
+                  Sparkline:
+                    Visibility: HIDDEN
+                    Type: LINE
+                    TooltipVisibility: HIDDEN
+              Actions: []
+              ColumnHierarchies: []
+          - KPIVisual:
+              VisualId: kpi-escalations
+              Title:
+                Visibility: VISIBLE
+                FormatText:
+                  PlainText: Open Escalations
+              Subtitle:
+                Visibility: VISIBLE
+              ChartConfiguration:
+                FieldWells:
+                  Values:
+                  - NumericalMeasureField:
+                      FieldId: kpi-escalations-v
+                      Column:
+                        DataSetIdentifier: kpi_snapshots
+                        ColumnName: open_escalations
+                      AggregationFunction:
+                        SimpleNumericalAggregation: MAX
+                  TargetValues:
+                  - NumericalMeasureField:
+                      FieldId: kpi-escalations-target
+                      Column:
+                        DataSetIdentifier: kpi_snapshots
+                        ColumnName: escalations_prev
+                      AggregationFunction:
+                        SimpleNumericalAggregation: MAX
+                  TrendGroups: []
+                SortConfiguration: {}
+                KPIOptions:
+                  Comparison:
+                    ComparisonMethod: DIFFERENCE
+                  PrimaryValueDisplayType: ACTUAL
+                  Sparkline:
+                    Visibility: HIDDEN
+                    Type: LINE
+                    TooltipVisibility: HIDDEN
+              Actions: []
+              ColumnHierarchies: []
+          - KPIVisual:
+              VisualId: kpi-presales
+              Title:
+                Visibility: VISIBLE
+                FormatText:
+                  PlainText: Presales Hours
+              Subtitle:
+                Visibility: VISIBLE
+              ChartConfiguration:
+                FieldWells:
+                  Values:
+                  - NumericalMeasureField:
+                      FieldId: kpi-presales-v
+                      Column:
+                        DataSetIdentifier: kpi_snapshots
+                        ColumnName: presales_hours
+                      AggregationFunction:
+                        SimpleNumericalAggregation: MAX
+                  TargetValues:
+                  - NumericalMeasureField:
+                      FieldId: kpi-presales-target
+                      Column:
+                        DataSetIdentifier: kpi_snapshots
+                        ColumnName: presales_prev
+                      AggregationFunction:
+                        SimpleNumericalAggregation: MAX
+                  TrendGroups: []
+                SortConfiguration: {}
+                KPIOptions:
+                  Comparison:
+                    ComparisonMethod: DIFFERENCE
+                  PrimaryValueDisplayType: ACTUAL
+                  Sparkline:
+                    Visibility: HIDDEN
+                    Type: LINE
+                    TooltipVisibility: HIDDEN
+              Actions: []
+              ColumnHierarchies: []
+          - LineChartVisual:
+              VisualId: chart-util-trend
+              Title:
+                Visibility: VISIBLE
+                FormatText:
+                  PlainText: Utilization Trend — YTD
+              Subtitle:
+                Visibility: VISIBLE
+              ChartConfiguration:
+                FieldWells:
+                  LineChartAggregatedFieldWells:
+                    Category:
+                    - DateDimensionField:
+                        FieldId: chart-util-trend-x
+                        Column:
+                          DataSetIdentifier: kpi_snapshots
+                          ColumnName: week_start_date
+                        DateGranularity: WEEK
+                        HierarchyId: chart-util-trend-x
+                    Values:
+                    - NumericalMeasureField:
+                        FieldId: chart-util-trend-y0
+                        Column:
+                          DataSetIdentifier: kpi_snapshots
+                          ColumnName: billable_util_pct
+                        AggregationFunction:
+                          SimpleNumericalAggregation: MAX
+                    - NumericalMeasureField:
+                        FieldId: chart-util-trend-y1
+                        Column:
+                          DataSetIdentifier: kpi_snapshots
+                          ColumnName: productive_util_pct
+                        AggregationFunction:
+                          SimpleNumericalAggregation: MAX
+                    - NumericalMeasureField:
+                        FieldId: chart-util-trend-y2
+                        Column:
+                          DataSetIdentifier: kpi_snapshots
+                          ColumnName: time_compliance_pct
+                        AggregationFunction:
+                          SimpleNumericalAggregation: MAX
+                    Colors: []
+                SortConfiguration: {}
+                Type: LINE
+                Legend:
+                  Visibility: VISIBLE
+                  Position: BOTTOM
+                ReferenceLines:
+                - Status: ENABLED
+                  DataConfiguration:
+                    StaticConfiguration:
+                      Value: 75.0
+                    AxisBinding: PRIMARY_YAXIS
+                    SeriesType: LINE
+                  StyleConfiguration:
+                    Pattern: DASHED
+                    Color: '#D74018'
+                  LabelConfiguration:
+                    CustomLabelConfiguration:
+                      CustomLabel: Billable 75%
+                    FontConfiguration:
+                      FontSize:
+                        Relative: MEDIUM
+                    HorizontalPosition: RIGHT
+                    VerticalPosition: ABOVE
+                - Status: ENABLED
+                  DataConfiguration:
+                    StaticConfiguration:
+                      Value: 80.0
+                    AxisBinding: PRIMARY_YAXIS
+                    SeriesType: LINE
+                  StyleConfiguration:
+                    Pattern: DASHED
+                    Color: '#FF9B00'
+                  LabelConfiguration:
+                    CustomLabelConfiguration:
+                      CustomLabel: Productive 80%
+                    FontConfiguration:
+                      FontSize:
+                        Relative: MEDIUM
+                    HorizontalPosition: RIGHT
+                    VerticalPosition: ABOVE
+                - Status: ENABLED
+                  DataConfiguration:
+                    StaticConfiguration:
+                      Value: 95.0
+                    AxisBinding: PRIMARY_YAXIS
+                    SeriesType: LINE
+                  StyleConfiguration:
+                    Pattern: DOTTED
+                    Color: '#0089DD'
+                  LabelConfiguration:
+                    CustomLabelConfiguration:
+                      CustomLabel: Compliance 95%
+                    FontConfiguration:
+                      FontSize:
+                        Relative: MEDIUM
+                    HorizontalPosition: RIGHT
+                    VerticalPosition: ABOVE
+                VisualPalette:
+                  ColorMap:
+                  - Element:
+                      FieldId: chart-util-trend-y0
+                    Color: '#0089DD'
+                  - Element:
+                      FieldId: chart-util-trend-y1
+                    Color: '#33A94F'
+                  - Element:
+                      FieldId: chart-util-trend-y2
+                    Color: '#FF9B00'
+              Actions: []
+              ColumnHierarchies:
+              - DateTimeHierarchy:
+                  HierarchyId: chart-util-trend-x
+                  DrillDownFilters: []
+          - WordCloudVisual:
+              VisualId: wc-project-hours
+              Title:
+                Visibility: VISIBLE
+                FormatText:
+                  PlainText: Hours by Project — Selected Week
+              Subtitle:
+                Visibility: VISIBLE
+              ChartConfiguration:
+                FieldWells:
+                  WordCloudAggregatedFieldWells:
+                    GroupBy:
+                    - CategoricalDimensionField:
+                        FieldId: wc-project-hours-w
+                        Column:
+                          DataSetIdentifier: project_hours_summary
+                          ColumnName: client_project
+                    Size:
+                    - NumericalMeasureField:
+                        FieldId: wc-project-hours-s
+                        Column:
+                          DataSetIdentifier: project_hours_summary
+                          ColumnName: total_hours
+                        AggregationFunction:
+                          SimpleNumericalAggregation: SUM
+                SortConfiguration: {}
+                WordCloudOptions:
+                  WordOrientation: HORIZONTAL
+                  WordScaling: EMPHASIZE
+                  CloudLayout: FLUID
+                  WordCasing: EXISTING_CASE
+                  WordPadding: MEDIUM
+                  MaximumStringLength: 40
+              Actions: []
+              ColumnHierarchies: []
+          - KPIVisual:
+              VisualId: kpi-wp-ps-billable
+              Title:
+                Visibility: VISIBLE
+                FormatText:
+                  PlainText: PS Billable Hrs
+              Subtitle:
+                Visibility: HIDDEN
+              ChartConfiguration:
+                FieldWells:
+                  Values:
+                  - NumericalMeasureField:
+                      FieldId: kpi-wp-ps-billable-val
+                      Column:
+                        DataSetIdentifier: kpi_snapshots
+                        ColumnName: ps_billable_hours
+                      AggregationFunction:
+                        SimpleNumericalAggregation: MAX
+                  TargetValues:
+                  - NumericalMeasureField:
+                      FieldId: kpi-wp-ps-billable-tgt
+                      Column:
+                        DataSetIdentifier: kpi_snapshots
+                        ColumnName: ps_billable_prev
+                      AggregationFunction:
+                        SimpleNumericalAggregation: MAX
+                  TrendGroups: []
+                SortConfiguration: {}
+                KPIOptions:
+                  Comparison:
+                    ComparisonMethod: DIFFERENCE
+                  PrimaryValueDisplayType: ACTUAL
+                  Sparkline:
+                    Visibility: HIDDEN
+                    Type: LINE
+                    TooltipVisibility: HIDDEN
+              Actions: []
+              ColumnHierarchies: []
+          - KPIVisual:
+              VisualId: kpi-wp-mc-billable
+              Title:
+                Visibility: VISIBLE
+                FormatText:
+                  PlainText: MC Billable Hrs
+              Subtitle:
+                Visibility: HIDDEN
+              ChartConfiguration:
+                FieldWells:
+                  Values:
+                  - NumericalMeasureField:
+                      FieldId: kpi-wp-mc-billable-val
+                      Column:
+                        DataSetIdentifier: kpi_snapshots
+                        ColumnName: mc_billable_hours
+                      AggregationFunction:
+                        SimpleNumericalAggregation: MAX
+                  TargetValues:
+                  - NumericalMeasureField:
+                      FieldId: kpi-wp-mc-billable-tgt
+                      Column:
+                        DataSetIdentifier: kpi_snapshots
+                        ColumnName: mc_billable_prev
+                      AggregationFunction:
+                        SimpleNumericalAggregation: MAX
+                  TrendGroups: []
+                SortConfiguration: {}
+                KPIOptions:
+                  Comparison:
+                    ComparisonMethod: DIFFERENCE
+                  PrimaryValueDisplayType: ACTUAL
+                  Sparkline:
+                    Visibility: HIDDEN
+                    Type: LINE
+                    TooltipVisibility: HIDDEN
+              Actions: []
+              ColumnHierarchies: []
+          - KPIVisual:
+              VisualId: kpi-wp-nb-productive
+              Title:
+                Visibility: VISIBLE
+                FormatText:
+                  PlainText: NB Productive Hrs
+              Subtitle:
+                Visibility: HIDDEN
+              ChartConfiguration:
+                FieldWells:
+                  Values:
+                  - NumericalMeasureField:
+                      FieldId: kpi-wp-nb-productive-val
+                      Column:
+                        DataSetIdentifier: kpi_snapshots
+                        ColumnName: productive_nb_hours
+                      AggregationFunction:
+                        SimpleNumericalAggregation: MAX
+                  TargetValues:
+                  - NumericalMeasureField:
+                      FieldId: kpi-wp-nb-productive-tgt
+                      Column:
+                        DataSetIdentifier: kpi_snapshots
+                        ColumnName: productive_nb_prev
+                      AggregationFunction:
+                        SimpleNumericalAggregation: MAX
+                  TrendGroups: []
+                SortConfiguration: {}
+                KPIOptions:
+                  Comparison:
+                    ComparisonMethod: DIFFERENCE
+                  PrimaryValueDisplayType: ACTUAL
+                  Sparkline:
+                    Visibility: HIDDEN
+                    Type: LINE
+                    TooltipVisibility: HIDDEN
+              Actions: []
+              ColumnHierarchies: []
+          - KPIVisual:
+              VisualId: kpi-wp-nb-nonproductive
+              Title:
+                Visibility: VISIBLE
+                FormatText:
+                  PlainText: NB Non-Productive Hrs
+              Subtitle:
+                Visibility: HIDDEN
+              ChartConfiguration:
+                FieldWells:
+                  Values:
+                  - NumericalMeasureField:
+                      FieldId: kpi-wp-nb-nonproductive-val
+                      Column:
+                        DataSetIdentifier: kpi_snapshots
+                        ColumnName: nb_nonproductive_hours
+                      AggregationFunction:
+                        SimpleNumericalAggregation: MAX
+                  TargetValues:
+                  - NumericalMeasureField:
+                      FieldId: kpi-wp-nb-nonproductive-tgt
+                      Column:
+                        DataSetIdentifier: kpi_snapshots
+                        ColumnName: nb_nonproductive_prev
+                      AggregationFunction:
+                        SimpleNumericalAggregation: MAX
+                  TrendGroups: []
+                SortConfiguration: {}
+                KPIOptions:
+                  Comparison:
+                    ComparisonMethod: DIFFERENCE
+                  PrimaryValueDisplayType: ACTUAL
+                  Sparkline:
+                    Visibility: HIDDEN
+                    Type: LINE
+                    TooltipVisibility: HIDDEN
+              Actions: []
+              ColumnHierarchies: []
+          - KPIVisual:
+              VisualId: kpi-wp-other-billable
+              Title:
+                Visibility: VISIBLE
+                FormatText:
+                  PlainText: Other Billable Hrs
+              Subtitle:
+                Visibility: HIDDEN
+              ChartConfiguration:
+                FieldWells:
+                  Values:
+                  - NumericalMeasureField:
+                      FieldId: kpi-wp-ob-val
+                      Column:
+                        DataSetIdentifier: kpi_snapshots
+                        ColumnName: other_billable_hours
+                      AggregationFunction:
+                        SimpleNumericalAggregation: MAX
+                  TargetValues: []
+                  TrendGroups: []
+                SortConfiguration: {}
+              Actions: []
+              ColumnHierarchies: []
+          Layouts:
+          - Configuration:
+              GridLayout:
+                Elements:
+                - ElementId: kpi-billable-util
+                  ElementType: VISUAL
+                  ColumnIndex: 0
+                  ColumnSpan: 6
+                  RowIndex: 0
+                  RowSpan: 4
+                - ElementId: kpi-productive-util
+                  ElementType: VISUAL
+                  ColumnIndex: 6
+                  ColumnSpan: 6
+                  RowIndex: 0
+                  RowSpan: 4
+                - ElementId: kpi-compliance
+                  ElementType: VISUAL
+                  ColumnIndex: 12
+                  ColumnSpan: 6
+                  RowIndex: 0
+                  RowSpan: 4
+                - ElementId: kpi-headcount
+                  ElementType: VISUAL
+                  ColumnIndex: 18
+                  ColumnSpan: 6
+                  RowIndex: 0
+                  RowSpan: 4
+                - ElementId: kpi-escalations
+                  ElementType: VISUAL
+                  ColumnIndex: 24
+                  ColumnSpan: 6
+                  RowIndex: 0
+                  RowSpan: 4
+                - ElementId: kpi-presales
+                  ElementType: VISUAL
+                  ColumnIndex: 30
+                  ColumnSpan: 6
+                  RowIndex: 0
+                  RowSpan: 4
+                - ElementId: chart-util-trend
+                  ElementType: VISUAL
+                  ColumnIndex: 0
+                  ColumnSpan: 36
+                  RowIndex: 8
+                  RowSpan: 14
+                - ElementId: wc-project-hours
+                  ElementType: VISUAL
+                  ColumnIndex: 0
+                  ColumnSpan: 36
+                  RowIndex: 22
+                  RowSpan: 10
+                - ElementId: kpi-wp-ps-billable
+                  ElementType: VISUAL
+                  ColumnIndex: 0
+                  ColumnSpan: 7
+                  RowIndex: 4
+                  RowSpan: 4
+                - ElementId: kpi-wp-mc-billable
+                  ElementType: VISUAL
+                  ColumnIndex: 7
+                  ColumnSpan: 7
+                  RowIndex: 4
+                  RowSpan: 4
+                - ElementId: kpi-wp-other-billable
+                  ElementType: VISUAL
+                  ColumnIndex: 14
+                  ColumnSpan: 8
+                  RowIndex: 4
+                  RowSpan: 4
+                - ElementId: kpi-wp-nb-productive
+                  ElementType: VISUAL
+                  ColumnIndex: 22
+                  ColumnSpan: 7
+                  RowIndex: 4
+                  RowSpan: 4
+                - ElementId: kpi-wp-nb-nonproductive
+                  ElementType: VISUAL
+                  ColumnIndex: 29
+                  ColumnSpan: 7
+                  RowIndex: 4
+                  RowSpan: 4
+          ContentType: INTERACTIVE
+        - SheetId: sheet-ps-delivery
+          Name: PS Delivery
+          ParameterControls:
+          - DateTimePicker:
+              ParameterControlId: ctrl-week-s2
+              Title: Reporting Week
+              SourceParameterName: pWeekStart
+              DisplayOptions:
+                TitleOptions:
+                  Visibility: VISIBLE
+                  FontConfiguration:
+                    FontSize:
+                      Relative: MEDIUM
+                DateTimeFormat: YYYY-MM-DD
+          FilterControls:
+          - Dropdown:
+              FilterControlId: ctrl-ps-health
+              Title: Health
+              SourceFilterId: fg-ps-health
+              DisplayOptions:
+                SelectAllOptions:
+                  Visibility: VISIBLE
+                TitleOptions:
+                  Visibility: VISIBLE
+                  FontConfiguration:
+                    FontSize:
+                      Relative: MEDIUM
+              Type: SINGLE_SELECT
+          Visuals:
+          - KPIVisual:
+              VisualId: kpi-ps-active
+              Title:
+                Visibility: VISIBLE
+                FormatText:
+                  PlainText: PS Active Projects
+              Subtitle:
+                Visibility: VISIBLE
+              ChartConfiguration:
+                FieldWells:
+                  Values:
+                  - NumericalMeasureField:
+                      FieldId: kpi-ps-active-v
+                      Column:
+                        DataSetIdentifier: kpi_snapshots
+                        ColumnName: ps_active_projects
+                      AggregationFunction:
+                        SimpleNumericalAggregation: MAX
+                  TargetValues:
+                  - NumericalMeasureField:
+                      FieldId: kpi-ps-active-target
+                      Column:
+                        DataSetIdentifier: kpi_snapshots
+                        ColumnName: ps_active_prev
+                      AggregationFunction:
+                        SimpleNumericalAggregation: MAX
+                  TrendGroups: []
+                SortConfiguration: {}
+                KPIOptions:
+                  Comparison:
+                    ComparisonMethod: DIFFERENCE
+                  PrimaryValueDisplayType: ACTUAL
+                  Sparkline:
+                    Visibility: HIDDEN
+                    Type: LINE
+                    TooltipVisibility: HIDDEN
+              Actions: []
+              ColumnHierarchies: []
+          - KPIVisual:
+              VisualId: kpi-ps-green
+              Title:
+                Visibility: VISIBLE
+                FormatText:
+                  PlainText: Projects Green
+              Subtitle:
+                Visibility: VISIBLE
+              ChartConfiguration:
+                FieldWells:
+                  Values:
+                  - NumericalMeasureField:
+                      FieldId: kpi-ps-green-v
+                      Column:
+                        DataSetIdentifier: kpi_snapshots
+                        ColumnName: ps_projects_green
+                      AggregationFunction:
+                        SimpleNumericalAggregation: MAX
+                  TargetValues:
+                  - NumericalMeasureField:
+                      FieldId: kpi-ps-green-target
+                      Column:
+                        DataSetIdentifier: kpi_snapshots
+                        ColumnName: ps_green_prev
+                      AggregationFunction:
+                        SimpleNumericalAggregation: MAX
+                  TrendGroups: []
+                SortConfiguration: {}
+                KPIOptions:
+                  Comparison:
+                    ComparisonMethod: DIFFERENCE
+                  PrimaryValueDisplayType: ACTUAL
+                  Sparkline:
+                    Visibility: HIDDEN
+                    Type: LINE
+                    TooltipVisibility: HIDDEN
+              Actions: []
+              ColumnHierarchies: []
+          - KPIVisual:
+              VisualId: kpi-ps-red
+              Title:
+                Visibility: VISIBLE
+                FormatText:
+                  PlainText: Projects Red / At Risk
+              Subtitle:
+                Visibility: VISIBLE
+              ChartConfiguration:
+                FieldWells:
+                  Values:
+                  - NumericalMeasureField:
+                      FieldId: kpi-ps-red-v
+                      Column:
+                        DataSetIdentifier: kpi_snapshots
+                        ColumnName: ps_projects_red
+                      AggregationFunction:
+                        SimpleNumericalAggregation: MAX
+                  TargetValues:
+                  - NumericalMeasureField:
+                      FieldId: kpi-ps-red-target
+                      Column:
+                        DataSetIdentifier: kpi_snapshots
+                        ColumnName: ps_red_prev
+                      AggregationFunction:
+                        SimpleNumericalAggregation: MAX
+                  TrendGroups: []
+                SortConfiguration: {}
+                KPIOptions:
+                  Comparison:
+                    ComparisonMethod: DIFFERENCE
+                  PrimaryValueDisplayType: ACTUAL
+                  Sparkline:
+                    Visibility: HIDDEN
+                    Type: LINE
+                    TooltipVisibility: HIDDEN
+              Actions: []
+              ColumnHierarchies: []
+          - KPIVisual:
+              VisualId: kpi-ps-duration
+              Title:
+                Visibility: VISIBLE
+                FormatText:
+                  PlainText: Avg Duration (wks)
+              Subtitle:
+                Visibility: VISIBLE
+              ChartConfiguration:
+                FieldWells:
+                  Values:
+                  - NumericalMeasureField:
+                      FieldId: kpi-ps-duration-v
+                      Column:
+                        DataSetIdentifier: kpi_snapshots
+                        ColumnName: ps_avg_duration_weeks
+                      AggregationFunction:
+                        SimpleNumericalAggregation: MAX
+                  TargetValues:
+                  - NumericalMeasureField:
+                      FieldId: kpi-ps-duration-target
+                      Column:
+                        DataSetIdentifier: kpi_snapshots
+                        ColumnName: target_ps_avg_duration_weeks
+                      AggregationFunction:
+                        SimpleNumericalAggregation: MAX
+                  TrendGroups: []
+                SortConfiguration: {}
+                KPIOptions:
+                  Comparison:
+                    ComparisonMethod: DIFFERENCE
+                  PrimaryValueDisplayType: ACTUAL
+                  Sparkline:
+                    Visibility: HIDDEN
+                    Type: LINE
+                    TooltipVisibility: HIDDEN
+              Actions: []
+              ColumnHierarchies: []
+          - KPIVisual:
+              VisualId: kpi-ps-ontime
+              Title:
+                Visibility: VISIBLE
+                FormatText:
+                  PlainText: On-Time Rate
+              Subtitle:
+                Visibility: VISIBLE
+              ChartConfiguration:
+                FieldWells:
+                  Values:
+                  - NumericalMeasureField:
+                      FieldId: kpi-ps-ontime-v
+                      Column:
+                        DataSetIdentifier: kpi_snapshots
+                        ColumnName: ps_on_time_pct
+                      AggregationFunction:
+                        SimpleNumericalAggregation: MAX
+                  TargetValues:
+                  - NumericalMeasureField:
+                      FieldId: kpi-ps-ontime-target
+                      Column:
+                        DataSetIdentifier: kpi_snapshots
+                        ColumnName: target_ps_on_time_pct
+                      AggregationFunction:
+                        SimpleNumericalAggregation: MAX
+                  TrendGroups: []
+                SortConfiguration: {}
+                KPIOptions:
+                  Comparison:
+                    ComparisonMethod: DIFFERENCE
+                  PrimaryValueDisplayType: ACTUAL
+                  Sparkline:
+                    Visibility: HIDDEN
+                    Type: LINE
+                    TooltipVisibility: HIDDEN
+              Actions: []
+              ColumnHierarchies: []
+          - KPIVisual:
+              VisualId: kpi-ps-billable
+              Title:
+                Visibility: VISIBLE
+                FormatText:
+                  PlainText: PS Billable Hours
+              Subtitle:
+                Visibility: VISIBLE
+              ChartConfiguration:
+                FieldWells:
+                  Values:
+                  - NumericalMeasureField:
+                      FieldId: kpi-ps-billable-v
+                      Column:
+                        DataSetIdentifier: kpi_snapshots
+                        ColumnName: ps_billable_hours
+                      AggregationFunction:
+                        SimpleNumericalAggregation: MAX
+                  TargetValues:
+                  - NumericalMeasureField:
+                      FieldId: kpi-ps-billable-target
+                      Column:
+                        DataSetIdentifier: kpi_snapshots
+                        ColumnName: ps_billable_prev
+                      AggregationFunction:
+                        SimpleNumericalAggregation: MAX
+                  TrendGroups: []
+                SortConfiguration: {}
+                KPIOptions:
+                  Comparison:
+                    ComparisonMethod: DIFFERENCE
+                  PrimaryValueDisplayType: ACTUAL
+                  Sparkline:
+                    Visibility: HIDDEN
+                    Type: LINE
+                    TooltipVisibility: HIDDEN
+              Actions: []
+              ColumnHierarchies: []
+          - PieChartVisual:
+              VisualId: donut-ps-health
+              Title:
+                Visibility: VISIBLE
+                FormatText:
+                  PlainText: Health Distribution
+              Subtitle:
+                Visibility: VISIBLE
+              ChartConfiguration:
+                FieldWells:
+                  PieChartAggregatedFieldWells:
+                    Category:
+                    - CategoricalDimensionField:
+                        FieldId: donut-ps-health-c
+                        Column:
+                          DataSetIdentifier: ps_projects
+                          ColumnName: health
+                    Values:
+                    - CategoricalMeasureField:
+                        FieldId: donut-ps-health-v
+                        Column:
+                          DataSetIdentifier: ps_projects
+                          ColumnName: issue_key
+                        AggregationFunction: DISTINCT_COUNT
+                SortConfiguration: {}
+                DonutOptions:
+                  ArcOptions:
+                    ArcThickness: MEDIUM
+                  DonutCenterOptions:
+                    LabelVisibility: VISIBLE
+                Legend:
+                  Visibility: VISIBLE
+                  Position: BOTTOM
+                DataLabels:
+                  Visibility: VISIBLE
+                  Overlap: DISABLE_OVERLAP
+                VisualPalette:
+                  ColorMap:
+                  - Element:
+                      FieldId: donut-ps-health-c
+                      FieldValue: Green
+                    Color: '#33A94F'
+                  - Element:
+                      FieldId: donut-ps-health-c
+                      FieldValue: Red
+                    Color: '#D74018'
+                  - Element:
+                      FieldId: donut-ps-health-c
+                      FieldValue: Yellow
+                    Color: '#FF9B00'
+                  - Element:
+                      FieldId: donut-ps-health-c
+                      FieldValue: Not Assigned
+                    Color: '#8B8B8B'
+              Actions: []
+              ColumnHierarchies: []
+          - BarChartVisual:
+              VisualId: bar-ps-stage
+              Title:
+                Visibility: VISIBLE
+                FormatText:
+                  PlainText: PS Pipeline by Stage
+              Subtitle:
+                Visibility: VISIBLE
+              ChartConfiguration:
+                FieldWells:
+                  BarChartAggregatedFieldWells:
+                    Category:
+                    - CategoricalDimensionField:
+                        FieldId: bar-ps-stage-c
+                        Column:
+                          DataSetIdentifier: ps_stage
+                          ColumnName: stage
+                    Values:
+                    - NumericalMeasureField:
+                        FieldId: bar-ps-stage-v
+                        Column:
+                          DataSetIdentifier: ps_stage
+                          ColumnName: this_week_count
+                        AggregationFunction:
+                          SimpleNumericalAggregation: SUM
+                    Colors: []
+                SortConfiguration:
+                  CategorySort:
+                  - ColumnSort:
+                      SortBy:
+                        DataSetIdentifier: ps_stage
+                        ColumnName: sort_order
+                      Direction: ASC
+                      AggregationFunction:
+                        NumericalAggregationFunction:
+                          SimpleNumericalAggregation: MIN
+                Orientation: HORIZONTAL
+                BarsArrangement: CLUSTERED
+                VisualPalette:
+                  ChartColor: '#0089DD'
+                Legend:
+                  Visibility: VISIBLE
+                  Position: BOTTOM
+                DataLabels:
+                  Visibility: VISIBLE
+                  Overlap: DISABLE_OVERLAP
+              Actions: []
+              ColumnHierarchies: []
+          - TableVisual:
+              VisualId: tbl-ps-projects
+              Title:
+                Visibility: VISIBLE
+                FormatText:
+                  PlainText: PS Project Health — Over Budget / Late / Escalated
+              Subtitle:
+                Visibility: VISIBLE
+              ChartConfiguration:
+                FieldWells:
+                  TableAggregatedFieldWells:
+                    GroupBy:
+                    - CategoricalDimensionField:
+                        FieldId: tbl-ps-projects-g0
+                        Column:
+                          DataSetIdentifier: ps_at_risk
+                          ColumnName: client_name
+                    - CategoricalDimensionField:
+                        FieldId: tbl-ps-projects-g1
+                        Column:
+                          DataSetIdentifier: ps_at_risk
+                          ColumnName: project_name
+                    - CategoricalDimensionField:
+                        FieldId: tbl-ps-projects-g2
+                        Column:
+                          DataSetIdentifier: ps_at_risk
+                          ColumnName: project_manager
+                    - CategoricalDimensionField:
+                        FieldId: tbl-ps-projects-g3
+                        Column:
+                          DataSetIdentifier: ps_at_risk
+                          ColumnName: type
+                    - CategoricalDimensionField:
+                        FieldId: tbl-ps-projects-g4
+                        Column:
+                          DataSetIdentifier: ps_at_risk
+                          ColumnName: stage
+                    - CategoricalDimensionField:
+                        FieldId: tbl-ps-projects-g5
+                        Column:
+                          DataSetIdentifier: ps_at_risk
+                          ColumnName: health
+                    - CategoricalDimensionField:
+                        FieldId: tbl-ps-projects-g6
+                        Column:
+                          DataSetIdentifier: ps_at_risk
+                          ColumnName: health_budget
+                    - CategoricalDimensionField:
+                        FieldId: tbl-ps-projects-g7
+                        Column:
+                          DataSetIdentifier: ps_at_risk
+                          ColumnName: health_schedule
+                    - CategoricalDimensionField:
+                        FieldId: tbl-ps-projects-g8
+                        Column:
+                          DataSetIdentifier: ps_at_risk
+                          ColumnName: escalation
+                    Values:
+                    - NumericalMeasureField:
+                        FieldId: tbl-ps-projects-v0
+                        Column:
+                          DataSetIdentifier: ps_at_risk
+                          ColumnName: budget_hours
+                        AggregationFunction:
+                          SimpleNumericalAggregation: MAX
+                    - NumericalMeasureField:
+                        FieldId: tbl-ps-projects-v1
+                        Column:
+                          DataSetIdentifier: ps_at_risk
+                          ColumnName: actual_hours
+                        AggregationFunction:
+                          SimpleNumericalAggregation: MAX
+                    - NumericalMeasureField:
+                        FieldId: tbl-ps-projects-v2
+                        Column:
+                          DataSetIdentifier: ps_at_risk
+                          ColumnName: budget_percent_used
+                        AggregationFunction:
+                          SimpleNumericalAggregation: MAX
+                    - NumericalMeasureField:
+                        FieldId: tbl-ps-projects-v3
+                        Column:
+                          DataSetIdentifier: ps_at_risk
+                          ColumnName: last_week_hours
+                        AggregationFunction:
+                          SimpleNumericalAggregation: MAX
+                SortConfiguration: {}
+                TableOptions:
+                  HeaderStyle:
+                    FontConfiguration:
+                      FontColor: '#FFFFFF'
+                    BackgroundColor: '#27164F'
+                  RowAlternateColorOptions:
+                    Status: ENABLED
+                    RowAlternateColors:
+                    - '#2A1545'
+                FieldOptions:
+                  SelectedFieldOptions:
+                  - FieldId: tbl-ps-projects-g0
+                    CustomLabel: Client
+                  - FieldId: tbl-ps-projects-g1
+                    CustomLabel: Project
+                  - FieldId: tbl-ps-projects-g2
+                    CustomLabel: PM
+                  - FieldId: tbl-ps-projects-g3
+                    CustomLabel: Type
+                  - FieldId: tbl-ps-projects-g4
+                    CustomLabel: Stage
+                  - FieldId: tbl-ps-projects-g5
+                    CustomLabel: Health
+                  - FieldId: tbl-ps-projects-g6
+                    CustomLabel: Budget Health
+                  - FieldId: tbl-ps-projects-g7
+                    CustomLabel: Schedule Health
+                  - FieldId: tbl-ps-projects-g8
+                    CustomLabel: Escalation
+                  - FieldId: tbl-ps-projects-v0
+                    CustomLabel: Budget Hrs
+                  - FieldId: tbl-ps-projects-v1
+                    CustomLabel: Actual Hrs
+                  - FieldId: tbl-ps-projects-v2
+                    CustomLabel: Budget %
+                  - FieldId: tbl-ps-projects-v3
+                    CustomLabel: Last Week Hrs
+              ConditionalFormatting:
+                ConditionalFormattingOptions:
+                - Cell:
+                    FieldId: tbl-ps-projects-g6
+                    TextFormat:
+                      BackgroundColor:
+                        Solid:
+                          Expression: '{health_budget} = "Red"'
+                          Color: '#D74018'
+                - Cell:
+                    FieldId: tbl-ps-projects-g6
+                    TextFormat:
+                      BackgroundColor:
+                        Solid:
+                          Expression: '{health_budget} = "Yellow"'
+                          Color: '#FF9B00'
+                - Cell:
+                    FieldId: tbl-ps-projects-g6
+                    TextFormat:
+                      BackgroundColor:
+                        Solid:
+                          Expression: '{health_budget} = "Green"'
+                          Color: '#33A94F'
+                - Cell:
+                    FieldId: tbl-ps-projects-g5
+                    TextFormat:
+                      BackgroundColor:
+                        Solid:
+                          Expression: '{health} = "Red"'
+                          Color: '#D74018'
+                - Cell:
+                    FieldId: tbl-ps-projects-g5
+                    TextFormat:
+                      BackgroundColor:
+                        Solid:
+                          Expression: '{health} = "Yellow"'
+                          Color: '#FF9B00'
+                - Cell:
+                    FieldId: tbl-ps-projects-g5
+                    TextFormat:
+                      BackgroundColor:
+                        Solid:
+                          Expression: '{health} = "Green"'
+                          Color: '#33A94F'
+                - Cell:
+                    FieldId: tbl-ps-projects-g8
+                    TextFormat:
+                      BackgroundColor:
+                        Solid:
+                          Expression: '{escalation} = "Red"'
+                          Color: '#D74018'
+                - Cell:
+                    FieldId: tbl-ps-projects-g8
+                    TextFormat:
+                      BackgroundColor:
+                        Solid:
+                          Expression: '{escalation} = "Green"'
+                          Color: '#33A94F'
+                - Cell:
+                    FieldId: tbl-ps-projects-g7
+                    TextFormat:
+                      BackgroundColor:
+                        Solid:
+                          Expression: '{health_schedule} = "Red"'
+                          Color: '#D74018'
+                - Cell:
+                    FieldId: tbl-ps-projects-g7
+                    TextFormat:
+                      BackgroundColor:
+                        Solid:
+                          Expression: '{health_schedule} = "Yellow"'
+                          Color: '#FF9B00'
+                - Cell:
+                    FieldId: tbl-ps-projects-g7
+                    TextFormat:
+                      BackgroundColor:
+                        Solid:
+                          Expression: '{health_schedule} = "Green"'
+                          Color: '#33A94F'
+              Actions: []
+          Layouts:
+          - Configuration:
+              GridLayout:
+                Elements:
+                - ElementId: kpi-ps-active
+                  ElementType: VISUAL
+                  ColumnIndex: 0
+                  ColumnSpan: 6
+                  RowIndex: 0
+                  RowSpan: 4
+                - ElementId: kpi-ps-green
+                  ElementType: VISUAL
+                  ColumnIndex: 6
+                  ColumnSpan: 6
+                  RowIndex: 0
+                  RowSpan: 4
+                - ElementId: kpi-ps-red
+                  ElementType: VISUAL
+                  ColumnIndex: 12
+                  ColumnSpan: 6
+                  RowIndex: 0
+                  RowSpan: 4
+                - ElementId: kpi-ps-duration
+                  ElementType: VISUAL
+                  ColumnIndex: 18
+                  ColumnSpan: 6
+                  RowIndex: 0
+                  RowSpan: 4
+                - ElementId: kpi-ps-ontime
+                  ElementType: VISUAL
+                  ColumnIndex: 24
+                  ColumnSpan: 6
+                  RowIndex: 0
+                  RowSpan: 4
+                - ElementId: kpi-ps-billable
+                  ElementType: VISUAL
+                  ColumnIndex: 30
+                  ColumnSpan: 6
+                  RowIndex: 0
+                  RowSpan: 4
+                - ElementId: donut-ps-health
+                  ElementType: VISUAL
+                  ColumnIndex: 0
+                  ColumnSpan: 10
+                  RowIndex: 4
+                  RowSpan: 12
+                - ElementId: bar-ps-stage
+                  ElementType: VISUAL
+                  ColumnIndex: 10
+                  ColumnSpan: 26
+                  RowIndex: 4
+                  RowSpan: 12
+                - ElementId: tbl-ps-projects
+                  ElementType: VISUAL
+                  ColumnIndex: 0
+                  ColumnSpan: 36
+                  RowIndex: 16
+                  RowSpan: 14
+          ContentType: INTERACTIVE
+        - SheetId: sheet-mc-delivery
+          Name: MC Service Delivery
+          ParameterControls:
+          - DateTimePicker:
+              ParameterControlId: ctrl-week-s3
+              Title: Reporting Week
+              SourceParameterName: pWeekStart
+              DisplayOptions:
+                TitleOptions:
+                  Visibility: VISIBLE
+                  FontConfiguration:
+                    FontSize:
+                      Relative: MEDIUM
+                DateTimeFormat: YYYY-MM-DD
+          Visuals:
+          - KPIVisual:
+              VisualId: kpi-mc-active
+              Title:
+                Visibility: VISIBLE
+                FormatText:
+                  PlainText: MC Active Customers
+              Subtitle:
+                Visibility: VISIBLE
+              ChartConfiguration:
+                FieldWells:
+                  Values:
+                  - NumericalMeasureField:
+                      FieldId: kpi-mc-active-v
+                      Column:
+                        DataSetIdentifier: kpi_snapshots
+                        ColumnName: mc_active_projects
+                      AggregationFunction:
+                        SimpleNumericalAggregation: MAX
+                  TargetValues:
+                  - NumericalMeasureField:
+                      FieldId: kpi-mc-active-target
+                      Column:
+                        DataSetIdentifier: kpi_snapshots
+                        ColumnName: mc_active_prev
+                      AggregationFunction:
+                        SimpleNumericalAggregation: MAX
+                  TrendGroups: []
+                SortConfiguration: {}
+                KPIOptions:
+                  Comparison:
+                    ComparisonMethod: DIFFERENCE
+                  PrimaryValueDisplayType: ACTUAL
+                  Sparkline:
+                    Visibility: HIDDEN
+                    Type: LINE
+                    TooltipVisibility: HIDDEN
+              Actions: []
+              ColumnHierarchies: []
+          - KPIVisual:
+              VisualId: kpi-mc-green
+              Title:
+                Visibility: VISIBLE
+                FormatText:
+                  PlainText: MC Green
+              Subtitle:
+                Visibility: VISIBLE
+              ChartConfiguration:
+                FieldWells:
+                  Values:
+                  - NumericalMeasureField:
+                      FieldId: kpi-mc-green-v
+                      Column:
+                        DataSetIdentifier: kpi_snapshots
+                        ColumnName: mc_projects_green
+                      AggregationFunction:
+                        SimpleNumericalAggregation: MAX
+                  TargetValues:
+                  - NumericalMeasureField:
+                      FieldId: kpi-mc-green-target
+                      Column:
+                        DataSetIdentifier: kpi_snapshots
+                        ColumnName: mc_green_prev
+                      AggregationFunction:
+                        SimpleNumericalAggregation: MAX
+                  TrendGroups: []
+                SortConfiguration: {}
+                KPIOptions:
+                  Comparison:
+                    ComparisonMethod: DIFFERENCE
+                  PrimaryValueDisplayType: ACTUAL
+                  Sparkline:
+                    Visibility: HIDDEN
+                    Type: LINE
+                    TooltipVisibility: HIDDEN
+              Actions: []
+              ColumnHierarchies: []
+          - KPIVisual:
+              VisualId: kpi-mc-red
+              Title:
+                Visibility: VISIBLE
+                FormatText:
+                  PlainText: MC Red
+              Subtitle:
+                Visibility: VISIBLE
+              ChartConfiguration:
+                FieldWells:
+                  Values:
+                  - NumericalMeasureField:
+                      FieldId: kpi-mc-red-v
+                      Column:
+                        DataSetIdentifier: kpi_snapshots
+                        ColumnName: mc_projects_red
+                      AggregationFunction:
+                        SimpleNumericalAggregation: MAX
+                  TargetValues:
+                  - NumericalMeasureField:
+                      FieldId: kpi-mc-red-target
+                      Column:
+                        DataSetIdentifier: kpi_snapshots
+                        ColumnName: mc_red_prev
+                      AggregationFunction:
+                        SimpleNumericalAggregation: MAX
+                  TrendGroups: []
+                SortConfiguration: {}
+                KPIOptions:
+                  Comparison:
+                    ComparisonMethod: DIFFERENCE
+                  PrimaryValueDisplayType: ACTUAL
+                  Sparkline:
+                    Visibility: HIDDEN
+                    Type: LINE
+                    TooltipVisibility: HIDDEN
+              Actions: []
+              ColumnHierarchies: []
+          - KPIVisual:
+              VisualId: kpi-mc-hours
+              Title:
+                Visibility: VISIBLE
+                FormatText:
+                  PlainText: MC Hours This Week
+              Subtitle:
+                Visibility: VISIBLE
+              ChartConfiguration:
+                FieldWells:
+                  Values:
+                  - NumericalMeasureField:
+                      FieldId: kpi-mc-hours-v
+                      Column:
+                        DataSetIdentifier: mc_activity
+                        ColumnName: clockify_hours
+                      AggregationFunction:
+                        SimpleNumericalAggregation: MAX
+                  TargetValues: []
+                  TrendGroups: []
+                SortConfiguration: {}
+                KPIOptions:
+                  PrimaryValueDisplayType: ACTUAL
+                  Sparkline:
+                    Visibility: HIDDEN
+                    Type: LINE
+                    TooltipVisibility: HIDDEN
+              Actions: []
+              ColumnHierarchies: []
+          - KPIVisual:
+              VisualId: kpi-mc-tickets
+              Title:
+                Visibility: VISIBLE
+                FormatText:
+                  PlainText: Tickets Updated
+              Subtitle:
+                Visibility: VISIBLE
+              ChartConfiguration:
+                FieldWells:
+                  Values:
+                  - NumericalMeasureField:
+                      FieldId: kpi-mc-tickets-v
+                      Column:
+                        DataSetIdentifier: mc_activity
+                        ColumnName: updated_this_week
+                      AggregationFunction:
+                        SimpleNumericalAggregation: MAX
+                  TargetValues: []
+                  TrendGroups: []
+                SortConfiguration: {}
+                KPIOptions:
+                  PrimaryValueDisplayType: ACTUAL
+                  Sparkline:
+                    Visibility: HIDDEN
+                    Type: LINE
+                    TooltipVisibility: HIDDEN
+              Actions: []
+              ColumnHierarchies: []
+          - KPIVisual:
+              VisualId: kpi-mc-esc
+              Title:
+                Visibility: VISIBLE
+                FormatText:
+                  PlainText: Open Escalations
+              Subtitle:
+                Visibility: VISIBLE
+              ChartConfiguration:
+                FieldWells:
+                  Values:
+                  - NumericalMeasureField:
+                      FieldId: kpi-mc-esc-v
+                      Column:
+                        DataSetIdentifier: mc_activity
+                        ColumnName: open_escalations
+                      AggregationFunction:
+                        SimpleNumericalAggregation: MAX
+                  TargetValues: []
+                  TrendGroups: []
+                SortConfiguration: {}
+                KPIOptions:
+                  PrimaryValueDisplayType: ACTUAL
+                  Sparkline:
+                    Visibility: HIDDEN
+                    Type: LINE
+                    TooltipVisibility: HIDDEN
+              Actions: []
+              ColumnHierarchies: []
+          - BarChartVisual:
+              VisualId: bar-mc-hours
+              Title:
+                Visibility: VISIBLE
+                FormatText:
+                  PlainText: Hours by Customer
+              Subtitle:
+                Visibility: VISIBLE
+              ChartConfiguration:
+                FieldWells:
+                  BarChartAggregatedFieldWells:
+                    Category:
+                    - CategoricalDimensionField:
+                        FieldId: bar-mc-hours-c
+                        Column:
+                          DataSetIdentifier: mc_activity
+                          ColumnName: customer_name
+                    Values:
+                    - NumericalMeasureField:
+                        FieldId: bar-mc-hours-v
+                        Column:
+                          DataSetIdentifier: mc_activity
+                          ColumnName: clockify_hours
+                        AggregationFunction:
+                          SimpleNumericalAggregation: SUM
+                    Colors: []
+                SortConfiguration:
+                  CategoryItemsLimit:
+                    OtherCategories: INCLUDE
+                  ColorItemsLimit:
+                    OtherCategories: INCLUDE
+                  SmallMultiplesLimitConfiguration:
+                    OtherCategories: INCLUDE
+                Orientation: HORIZONTAL
+                BarsArrangement: CLUSTERED
+                VisualPalette:
+                  ChartColor: '#0089DD'
+                Legend:
+                  Visibility: VISIBLE
+                  Position: BOTTOM
+                DataLabels:
+                  Visibility: VISIBLE
+                  Overlap: DISABLE_OVERLAP
+              Actions: []
+              ColumnHierarchies: []
+          - BarChartVisual:
+              VisualId: bar-mc-tickets
+              Title:
+                Visibility: VISIBLE
+                FormatText:
+                  PlainText: Tickets Updated by Customer
+              Subtitle:
+                Visibility: VISIBLE
+              ChartConfiguration:
+                FieldWells:
+                  BarChartAggregatedFieldWells:
+                    Category:
+                    - CategoricalDimensionField:
+                        FieldId: bar-mc-tickets-c
+                        Column:
+                          DataSetIdentifier: mc_activity
+                          ColumnName: customer_name
+                    Values:
+                    - NumericalMeasureField:
+                        FieldId: bar-mc-tickets-v
+                        Column:
+                          DataSetIdentifier: mc_activity
+                          ColumnName: updated_this_week
+                        AggregationFunction:
+                          SimpleNumericalAggregation: SUM
+                    Colors: []
+                SortConfiguration:
+                  CategoryItemsLimit:
+                    OtherCategories: INCLUDE
+                  ColorItemsLimit:
+                    OtherCategories: INCLUDE
+                  SmallMultiplesLimitConfiguration:
+                    OtherCategories: INCLUDE
+                Orientation: HORIZONTAL
+                BarsArrangement: CLUSTERED
+                VisualPalette:
+                  ChartColor: '#0089DD'
+                Legend:
+                  Visibility: VISIBLE
+                  Position: BOTTOM
+                DataLabels:
+                  Visibility: VISIBLE
+                  Overlap: DISABLE_OVERLAP
+              Actions: []
+              ColumnHierarchies: []
+          - TableVisual:
+              VisualId: tbl-mc
+              Title:
+                Visibility: VISIBLE
+                FormatText:
+                  PlainText: MC Customer Health
+              Subtitle:
+                Visibility: VISIBLE
+              ChartConfiguration:
+                FieldWells:
+                  TableAggregatedFieldWells:
+                    GroupBy:
+                    - CategoricalDimensionField:
+                        FieldId: tbl-mc-g0
+                        Column:
+                          DataSetIdentifier: mc_at_risk
+                          ColumnName: customer_name
+                    - CategoricalDimensionField:
+                        FieldId: tbl-mc-g1
+                        Column:
+                          DataSetIdentifier: mc_at_risk
+                          ColumnName: health_overall
+                    Values:
+                    - NumericalMeasureField:
+                        FieldId: tbl-mc-v0
+                        Column:
+                          DataSetIdentifier: mc_at_risk
+                          ColumnName: clockify_hours
+                        AggregationFunction:
+                          SimpleNumericalAggregation: SUM
+                    - NumericalMeasureField:
+                        FieldId: tbl-mc-v1
+                        Column:
+                          DataSetIdentifier: mc_at_risk
+                          ColumnName: billable_hours
+                        AggregationFunction:
+                          SimpleNumericalAggregation: SUM
+                    - NumericalMeasureField:
+                        FieldId: tbl-mc-v2
+                        Column:
+                          DataSetIdentifier: mc_at_risk
+                          ColumnName: total_issues
+                        AggregationFunction:
+                          SimpleNumericalAggregation: MAX
+                    - NumericalMeasureField:
+                        FieldId: tbl-mc-v3
+                        Column:
+                          DataSetIdentifier: mc_at_risk
+                          ColumnName: in_progress_issues
+                        AggregationFunction:
+                          SimpleNumericalAggregation: MAX
+                    - NumericalMeasureField:
+                        FieldId: tbl-mc-v4
+                        Column:
+                          DataSetIdentifier: mc_at_risk
+                          ColumnName: done_issues
+                        AggregationFunction:
+                          SimpleNumericalAggregation: MAX
+                    - NumericalMeasureField:
+                        FieldId: tbl-mc-v5
+                        Column:
+                          DataSetIdentifier: mc_at_risk
+                          ColumnName: updated_this_week
+                        AggregationFunction:
+                          SimpleNumericalAggregation: MAX
+                    - NumericalMeasureField:
+                        FieldId: tbl-mc-v6
+                        Column:
+                          DataSetIdentifier: mc_at_risk
+                          ColumnName: open_escalations
+                        AggregationFunction:
+                          SimpleNumericalAggregation: MAX
+                SortConfiguration: {}
+                TableOptions:
+                  HeaderStyle:
+                    FontConfiguration:
+                      FontColor: '#FFFFFF'
+                    BackgroundColor: '#27164F'
+                  RowAlternateColorOptions:
+                    Status: ENABLED
+                    RowAlternateColors:
+                    - '#2A1545'
+                FieldOptions:
+                  SelectedFieldOptions:
+                  - FieldId: tbl-mc-g0
+                    CustomLabel: Customer
+                  - FieldId: tbl-mc-g1
+                    CustomLabel: Health
+                  - FieldId: tbl-mc-v0
+                    CustomLabel: Total Hrs
+                  - FieldId: tbl-mc-v1
+                    CustomLabel: Billable Hrs
+                  - FieldId: tbl-mc-v2
+                    CustomLabel: Total Tickets
+                  - FieldId: tbl-mc-v3
+                    CustomLabel: In Progress
+                  - FieldId: tbl-mc-v4
+                    CustomLabel: Done
+                  - FieldId: tbl-mc-v5
+                    CustomLabel: Updated This Week
+                  - FieldId: tbl-mc-v6
+                    CustomLabel: Escalations
+              ConditionalFormatting:
+                ConditionalFormattingOptions:
+                - Cell:
+                    FieldId: tbl-mc-g1
+                    TextFormat:
+                      BackgroundColor:
+                        Solid:
+                          Expression: '{health_overall} = "Red"'
+                          Color: '#D74018'
+                - Cell:
+                    FieldId: tbl-mc-g1
+                    TextFormat:
+                      BackgroundColor:
+                        Solid:
+                          Expression: '{health_overall} = "Yellow"'
+                          Color: '#FF9B00'
+                - Cell:
+                    FieldId: tbl-mc-g1
+                    TextFormat:
+                      BackgroundColor:
+                        Solid:
+                          Expression: '{health_overall} = "Green"'
+                          Color: '#33A94F'
+              Actions: []
+          Layouts:
+          - Configuration:
+              GridLayout:
+                Elements:
+                - ElementId: kpi-mc-active
+                  ElementType: VISUAL
+                  ColumnIndex: 0
+                  ColumnSpan: 6
+                  RowIndex: 0
+                  RowSpan: 4
+                - ElementId: kpi-mc-green
+                  ElementType: VISUAL
+                  ColumnIndex: 6
+                  ColumnSpan: 6
+                  RowIndex: 0
+                  RowSpan: 4
+                - ElementId: kpi-mc-red
+                  ElementType: VISUAL
+                  ColumnIndex: 12
+                  ColumnSpan: 6
+                  RowIndex: 0
+                  RowSpan: 4
+                - ElementId: kpi-mc-hours
+                  ElementType: VISUAL
+                  ColumnIndex: 18
+                  ColumnSpan: 6
+                  RowIndex: 0
+                  RowSpan: 4
+                - ElementId: kpi-mc-tickets
+                  ElementType: VISUAL
+                  ColumnIndex: 24
+                  ColumnSpan: 6
+                  RowIndex: 0
+                  RowSpan: 4
+                - ElementId: kpi-mc-esc
+                  ElementType: VISUAL
+                  ColumnIndex: 30
+                  ColumnSpan: 6
+                  RowIndex: 0
+                  RowSpan: 4
+                - ElementId: bar-mc-hours
+                  ElementType: VISUAL
+                  ColumnIndex: 0
+                  ColumnSpan: 18
+                  RowIndex: 4
+                  RowSpan: 12
+                - ElementId: bar-mc-tickets
+                  ElementType: VISUAL
+                  ColumnIndex: 18
+                  ColumnSpan: 18
+                  RowIndex: 4
+                  RowSpan: 12
+                - ElementId: tbl-mc
+                  ElementType: VISUAL
+                  ColumnIndex: 0
+                  ColumnSpan: 36
+                  RowIndex: 16
+                  RowSpan: 12
+          ContentType: INTERACTIVE
+        - SheetId: sheet-escalations
+          Name: Escalations
+          Visuals:
+          - KPIVisual:
+              VisualId: kpi-esc-total
+              Title:
+                Visibility: VISIBLE
+                FormatText:
+                  PlainText: Total Open
+              Subtitle:
+                Visibility: VISIBLE
+              ChartConfiguration:
+                FieldWells:
+                  Values:
+                  - CategoricalMeasureField:
+                      FieldId: kpi-esc-total-v
+                      Column:
+                        DataSetIdentifier: escalations
+                        ColumnName: issue_key
+                      AggregationFunction: DISTINCT_COUNT
+                  TargetValues: []
+                  TrendGroups: []
+                SortConfiguration: {}
+                KPIOptions:
+                  PrimaryValueDisplayType: ACTUAL
+                  Sparkline:
+                    Visibility: HIDDEN
+                    Type: LINE
+                    TooltipVisibility: HIDDEN
+              Actions: []
+              ColumnHierarchies: []
+          - KPIVisual:
+              VisualId: kpi-esc-days
+              Title:
+                Visibility: VISIBLE
+                FormatText:
+                  PlainText: Avg Days Open
+              Subtitle:
+                Visibility: VISIBLE
+              ChartConfiguration:
+                FieldWells:
+                  Values:
+                  - NumericalMeasureField:
+                      FieldId: kpi-esc-days-v
+                      Column:
+                        DataSetIdentifier: escalations
+                        ColumnName: days_open
+                      AggregationFunction:
+                        SimpleNumericalAggregation: MAX
+                  TargetValues: []
+                  TrendGroups: []
+                SortConfiguration: {}
+                KPIOptions:
+                  PrimaryValueDisplayType: ACTUAL
+                  Sparkline:
+                    Visibility: HIDDEN
+                    Type: LINE
+                    TooltipVisibility: HIDDEN
+              Actions: []
+              ColumnHierarchies: []
+          - KPIVisual:
+              VisualId: kpi-esc-high
+              Title:
+                Visibility: VISIBLE
+                FormatText:
+                  PlainText: High Priority
+              Subtitle:
+                Visibility: VISIBLE
+              ChartConfiguration:
+                FieldWells:
+                  Values:
+                  - CategoricalMeasureField:
+                      FieldId: kpi-esc-high-v
+                      Column:
+                        DataSetIdentifier: escalations
+                        ColumnName: issue_key
+                      AggregationFunction: DISTINCT_COUNT
+                  TargetValues: []
+                  TrendGroups: []
+                SortConfiguration: {}
+                KPIOptions:
+                  PrimaryValueDisplayType: ACTUAL
+                  Sparkline:
+                    Visibility: HIDDEN
+                    Type: LINE
+                    TooltipVisibility: HIDDEN
+              Actions: []
+              ColumnHierarchies: []
+          - KPIVisual:
+              VisualId: kpi-esc-old
+              Title:
+                Visibility: VISIBLE
+                FormatText:
+                  PlainText: Oldest (days)
+              Subtitle:
+                Visibility: VISIBLE
+              ChartConfiguration:
+                FieldWells:
+                  Values:
+                  - NumericalMeasureField:
+                      FieldId: kpi-esc-old-v
+                      Column:
+                        DataSetIdentifier: escalations
+                        ColumnName: days_open
+                      AggregationFunction:
+                        SimpleNumericalAggregation: MAX
+                  TargetValues: []
+                  TrendGroups: []
+                SortConfiguration: {}
+                KPIOptions:
+                  PrimaryValueDisplayType: ACTUAL
+                  Sparkline:
+                    Visibility: HIDDEN
+                    Type: LINE
+                    TooltipVisibility: HIDDEN
+              Actions: []
+              ColumnHierarchies: []
+          - BarChartVisual:
+              VisualId: bar-esc-cust
+              Title:
+                Visibility: VISIBLE
+                FormatText:
+                  PlainText: By Customer
+              Subtitle:
+                Visibility: VISIBLE
+              ChartConfiguration:
+                FieldWells:
+                  BarChartAggregatedFieldWells:
+                    Category:
+                    - CategoricalDimensionField:
+                        FieldId: bar-esc-cust-c
+                        Column:
+                          DataSetIdentifier: escalations
+                          ColumnName: customer_name
+                    Values:
+                    - CategoricalMeasureField:
+                        FieldId: bar-esc-cust-v
+                        Column:
+                          DataSetIdentifier: escalations
+                          ColumnName: issue_key
+                        AggregationFunction: COUNT
+                    Colors: []
+                SortConfiguration:
+                  CategoryItemsLimit:
+                    OtherCategories: INCLUDE
+                  ColorItemsLimit:
+                    OtherCategories: INCLUDE
+                  SmallMultiplesLimitConfiguration:
+                    OtherCategories: INCLUDE
+                Orientation: HORIZONTAL
+                BarsArrangement: CLUSTERED
+                VisualPalette:
+                  ChartColor: '#0089DD'
+                Legend:
+                  Visibility: VISIBLE
+                  Position: BOTTOM
+                DataLabels:
+                  Visibility: VISIBLE
+                  Overlap: DISABLE_OVERLAP
+              Actions: []
+              ColumnHierarchies: []
+          - BarChartVisual:
+              VisualId: bar-esc-asgn
+              Title:
+                Visibility: VISIBLE
+                FormatText:
+                  PlainText: By Assignee
+              Subtitle:
+                Visibility: VISIBLE
+              ChartConfiguration:
+                FieldWells:
+                  BarChartAggregatedFieldWells:
+                    Category:
+                    - CategoricalDimensionField:
+                        FieldId: bar-esc-asgn-c
+                        Column:
+                          DataSetIdentifier: escalations
+                          ColumnName: assignee_name
+                    Values:
+                    - CategoricalMeasureField:
+                        FieldId: bar-esc-asgn-v
+                        Column:
+                          DataSetIdentifier: escalations
+                          ColumnName: issue_key
+                        AggregationFunction: COUNT
+                    Colors: []
+                SortConfiguration:
+                  CategoryItemsLimit:
+                    OtherCategories: INCLUDE
+                  ColorItemsLimit:
+                    OtherCategories: INCLUDE
+                  SmallMultiplesLimitConfiguration:
+                    OtherCategories: INCLUDE
+                Orientation: HORIZONTAL
+                BarsArrangement: CLUSTERED
+                VisualPalette:
+                  ChartColor: '#0089DD'
+                Legend:
+                  Visibility: VISIBLE
+                  Position: BOTTOM
+                DataLabels:
+                  Visibility: VISIBLE
+                  Overlap: DISABLE_OVERLAP
+              Actions: []
+              ColumnHierarchies: []
+          - TableVisual:
+              VisualId: tbl-esc
+              Title:
+                Visibility: VISIBLE
+                FormatText:
+                  PlainText: Open Escalations
+              Subtitle:
+                Visibility: VISIBLE
+              ChartConfiguration:
+                FieldWells:
+                  TableAggregatedFieldWells:
+                    GroupBy:
+                    - CategoricalDimensionField:
+                        FieldId: tbl-esc-g0
+                        Column:
+                          DataSetIdentifier: escalations
+                          ColumnName: customer_name
+                    - CategoricalDimensionField:
+                        FieldId: tbl-esc-g1
+                        Column:
+                          DataSetIdentifier: escalations
+                          ColumnName: summary
+                    - CategoricalDimensionField:
+                        FieldId: tbl-esc-g2
+                        Column:
+                          DataSetIdentifier: escalations
+                          ColumnName: priority
+                    - CategoricalDimensionField:
+                        FieldId: tbl-esc-g3
+                        Column:
+                          DataSetIdentifier: escalations
+                          ColumnName: assignee_name
+                    - CategoricalDimensionField:
+                        FieldId: tbl-esc-g4
+                        Column:
+                          DataSetIdentifier: escalations
+                          ColumnName: escalation_state
+                    Values:
+                    - NumericalMeasureField:
+                        FieldId: tbl-esc-v0
+                        Column:
+                          DataSetIdentifier: escalations
+                          ColumnName: days_open
+                        AggregationFunction:
+                          SimpleNumericalAggregation: MAX
+                SortConfiguration: {}
+                TableOptions:
+                  HeaderStyle:
+                    FontConfiguration:
+                      FontColor: '#FFFFFF'
+                    BackgroundColor: '#27164F'
+                  RowAlternateColorOptions:
+                    Status: ENABLED
+                    RowAlternateColors:
+                    - '#2A1545'
+                FieldOptions:
+                  SelectedFieldOptions:
+                  - FieldId: tbl-esc-g0
+                    CustomLabel: Customer
+                  - FieldId: tbl-esc-g1
+                    CustomLabel: Summary
+                  - FieldId: tbl-esc-g2
+                    CustomLabel: Priority
+                  - FieldId: tbl-esc-g3
+                    CustomLabel: Assignee
+                  - FieldId: tbl-esc-g4
+                    CustomLabel: State
+                  - FieldId: tbl-esc-v0
+                    CustomLabel: Days Open
+              Actions: []
+          Layouts:
+          - Configuration:
+              GridLayout:
+                Elements:
+                - ElementId: kpi-esc-total
+                  ElementType: VISUAL
+                  ColumnIndex: 0
+                  ColumnSpan: 9
+                  RowIndex: 0
+                  RowSpan: 4
+                - ElementId: kpi-esc-days
+                  ElementType: VISUAL
+                  ColumnIndex: 9
+                  ColumnSpan: 9
+                  RowIndex: 0
+                  RowSpan: 4
+                - ElementId: kpi-esc-high
+                  ElementType: VISUAL
+                  ColumnIndex: 18
+                  ColumnSpan: 9
+                  RowIndex: 0
+                  RowSpan: 4
+                - ElementId: kpi-esc-old
+                  ElementType: VISUAL
+                  ColumnIndex: 27
+                  ColumnSpan: 9
+                  RowIndex: 0
+                  RowSpan: 4
+                - ElementId: bar-esc-cust
+                  ElementType: VISUAL
+                  ColumnIndex: 0
+                  ColumnSpan: 18
+                  RowIndex: 4
+                  RowSpan: 12
+                - ElementId: bar-esc-asgn
+                  ElementType: VISUAL
+                  ColumnIndex: 18
+                  ColumnSpan: 18
+                  RowIndex: 4
+                  RowSpan: 12
+                - ElementId: tbl-esc
+                  ElementType: VISUAL
+                  ColumnIndex: 0
+                  ColumnSpan: 36
+                  RowIndex: 16
+                  RowSpan: 12
+          ContentType: INTERACTIVE
+        - SheetId: sheet-time-util
+          Name: Time & Utilization
+          ParameterControls:
+          - DateTimePicker:
+              ParameterControlId: ctrl-week-s5
+              Title: Reporting Week
+              SourceParameterName: pWeekStart
+              DisplayOptions:
+                TitleOptions:
+                  Visibility: VISIBLE
+                  FontConfiguration:
+                    FontSize:
+                      Relative: MEDIUM
+                DateTimeFormat: YYYY-MM-DD
+          FilterControls:
+          - Dropdown:
+              FilterControlId: ctrl-compliance-status
+              Title: Submission Status
+              SourceFilterId: fg-compliance-status
+              DisplayOptions:
+                SelectAllOptions:
+                  Visibility: VISIBLE
+                TitleOptions:
+                  Visibility: VISIBLE
+                  FontConfiguration:
+                    FontSize:
+                      Relative: MEDIUM
+              Type: SINGLE_SELECT
+          Visuals:
+          - KPIVisual:
+              VisualId: kpi-tu-billable
+              Title:
+                Visibility: VISIBLE
+                FormatText:
+                  PlainText: Billable Utilization
+              Subtitle:
+                Visibility: VISIBLE
+              ChartConfiguration:
+                FieldWells:
+                  Values:
+                  - NumericalMeasureField:
+                      FieldId: kpi-tu-billable-v
+                      Column:
+                        DataSetIdentifier: kpi_snapshots
+                        ColumnName: billable_util_pct
+                      AggregationFunction:
+                        SimpleNumericalAggregation: MAX
+                  TargetValues:
+                  - NumericalMeasureField:
+                      FieldId: kpi-tu-billable-target
+                      Column:
+                        DataSetIdentifier: kpi_snapshots
+                        ColumnName: billable_util_prev
+                      AggregationFunction:
+                        SimpleNumericalAggregation: MAX
+                  TrendGroups: []
+                SortConfiguration: {}
+                KPIOptions:
+                  Comparison:
+                    ComparisonMethod: DIFFERENCE
+                  PrimaryValueDisplayType: ACTUAL
+                  Sparkline:
+                    Visibility: HIDDEN
+                    Type: LINE
+                    TooltipVisibility: HIDDEN
+              Actions: []
+              ColumnHierarchies: []
+          - KPIVisual:
+              VisualId: kpi-tu-compliance
+              Title:
+                Visibility: VISIBLE
+                FormatText:
+                  PlainText: Time Compliance
+              Subtitle:
+                Visibility: VISIBLE
+              ChartConfiguration:
+                FieldWells:
+                  Values:
+                  - NumericalMeasureField:
+                      FieldId: kpi-tu-compliance-v
+                      Column:
+                        DataSetIdentifier: kpi_snapshots
+                        ColumnName: time_compliance_pct
+                      AggregationFunction:
+                        SimpleNumericalAggregation: MAX
+                  TargetValues:
+                  - NumericalMeasureField:
+                      FieldId: kpi-tu-compliance-target
+                      Column:
+                        DataSetIdentifier: kpi_snapshots
+                        ColumnName: compliance_prev
+                      AggregationFunction:
+                        SimpleNumericalAggregation: MAX
+                  TrendGroups: []
+                SortConfiguration: {}
+                KPIOptions:
+                  Comparison:
+                    ComparisonMethod: DIFFERENCE
+                  PrimaryValueDisplayType: ACTUAL
+                  Sparkline:
+                    Visibility: HIDDEN
+                    Type: LINE
+                    TooltipVisibility: HIDDEN
+              Actions: []
+              ColumnHierarchies: []
+          - KPIVisual:
+              VisualId: kpi-tu-missing
+              Title:
+                Visibility: VISIBLE
+                FormatText:
+                  PlainText: No Time Submitted
+              Subtitle:
+                Visibility: VISIBLE
+              ChartConfiguration:
+                FieldWells:
+                  Values:
+                  - NumericalMeasureField:
+                      FieldId: kpi-tu-missing-val
+                      Column:
+                        DataSetIdentifier: kpi_snapshots
+                        ColumnName: missing_time_count
+                      AggregationFunction:
+                        SimpleNumericalAggregation: MAX
+                  TargetValues:
+                  - NumericalMeasureField:
+                      FieldId: kpi-tu-missing-tgt
+                      Column:
+                        DataSetIdentifier: kpi_snapshots
+                        ColumnName: missing_time_prev
+                      AggregationFunction:
+                        SimpleNumericalAggregation: MAX
+                  TrendGroups: []
+                SortConfiguration: {}
+                KPIOptions:
+                  Comparison:
+                    ComparisonMethod: DIFFERENCE
+                  PrimaryValueDisplayType: ACTUAL
+                  Sparkline:
+                    Visibility: HIDDEN
+                    Type: LINE
+                    TooltipVisibility: HIDDEN
+              Actions: []
+              ColumnHierarchies: []
+          - KPIVisual:
+              VisualId: kpi-tu-presales
+              Title:
+                Visibility: VISIBLE
+                FormatText:
+                  PlainText: Presales Hours
+              Subtitle:
+                Visibility: VISIBLE
+              ChartConfiguration:
+                FieldWells:
+                  Values:
+                  - NumericalMeasureField:
+                      FieldId: kpi-tu-presales-v
+                      Column:
+                        DataSetIdentifier: kpi_snapshots
+                        ColumnName: presales_hours
+                      AggregationFunction:
+                        SimpleNumericalAggregation: MAX
+                  TargetValues:
+                  - NumericalMeasureField:
+                      FieldId: kpi-tu-presales-target
+                      Column:
+                        DataSetIdentifier: kpi_snapshots
+                        ColumnName: presales_prev
+                      AggregationFunction:
+                        SimpleNumericalAggregation: MAX
+                  TrendGroups: []
+                SortConfiguration: {}
+                KPIOptions:
+                  Comparison:
+                    ComparisonMethod: DIFFERENCE
+                  PrimaryValueDisplayType: ACTUAL
+                  Sparkline:
+                    Visibility: HIDDEN
+                    Type: LINE
+                    TooltipVisibility: HIDDEN
+              Actions: []
+              ColumnHierarchies: []
+          - TableVisual:
+              VisualId: tbl-missing
+              Title:
+                Visibility: VISIBLE
+                FormatText:
+                  PlainText: Non-Compliant Staff
+              Subtitle:
+                Visibility: VISIBLE
+              ChartConfiguration:
+                FieldWells:
+                  TableAggregatedFieldWells:
+                    GroupBy:
+                    - CategoricalDimensionField:
+                        FieldId: tbl-missing-g0
+                        Column:
+                          DataSetIdentifier: compliance
+                          ColumnName: name
+                    - CategoricalDimensionField:
+                        FieldId: tbl-missing-g1
+                        Column:
+                          DataSetIdentifier: compliance
+                          ColumnName: pod_assignment
+                    - CategoricalDimensionField:
+                        FieldId: tbl-missing-g2
+                        Column:
+                          DataSetIdentifier: compliance
+                          ColumnName: practice_alignment
+                    - CategoricalDimensionField:
+                        FieldId: tbl-missing-g3
+                        Column:
+                          DataSetIdentifier: compliance
+                          ColumnName: submission_status
+                    Values:
+                    - NumericalMeasureField:
+                        FieldId: tbl-missing-v0
+                        Column:
+                          DataSetIdentifier: compliance
+                          ColumnName: hours_submitted
+                        AggregationFunction:
+                          SimpleNumericalAggregation: MAX
+                    - NumericalMeasureField:
+                        FieldId: tbl-missing-v1
+                        Column:
+                          DataSetIdentifier: compliance
+                          ColumnName: weekly_expected_hours
+                        AggregationFunction:
+                          SimpleNumericalAggregation: MAX
+                SortConfiguration: {}
+                TableOptions:
+                  HeaderStyle:
+                    FontConfiguration:
+                      FontColor: '#FFFFFF'
+                    BackgroundColor: '#27164F'
+                  RowAlternateColorOptions:
+                    Status: ENABLED
+                    RowAlternateColors:
+                    - '#2A1545'
+                FieldOptions:
+                  SelectedFieldOptions:
+                  - FieldId: tbl-missing-g1
+                    CustomLabel: POD
+                  - FieldId: tbl-missing-g2
+                    CustomLabel: Practice
+                  - FieldId: tbl-missing-g3
+                    CustomLabel: Status
+                  - FieldId: tbl-missing-v0
+                    CustomLabel: Submitted Hrs
+                  - FieldId: tbl-missing-v1
+                    CustomLabel: Expected Hrs
+              Actions: []
+          - TableVisual:
+              VisualId: tbl-util
+              Title:
+                Visibility: VISIBLE
+                FormatText:
+                  PlainText: Productive Utilization by Person
+              Subtitle:
+                Visibility: VISIBLE
+              ChartConfiguration:
+                FieldWells:
+                  TableAggregatedFieldWells:
+                    GroupBy:
+                    - CategoricalDimensionField:
+                        FieldId: tbl-util-g0
+                        Column:
+                          DataSetIdentifier: productive_util
+                          ColumnName: employee_name
+                    - CategoricalDimensionField:
+                        FieldId: tbl-util-g1
+                        Column:
+                          DataSetIdentifier: productive_util
+                          ColumnName: pod_assignment
+                    - CategoricalDimensionField:
+                        FieldId: tbl-util-g2
+                        Column:
+                          DataSetIdentifier: productive_util
+                          ColumnName: practice_alignment
+                    Values:
+                    - NumericalMeasureField:
+                        FieldId: tbl-util-v0
+                        Column:
+                          DataSetIdentifier: productive_util
+                          ColumnName: billable_hours
+                        AggregationFunction:
+                          SimpleNumericalAggregation: SUM
+                    - NumericalMeasureField:
+                        FieldId: tbl-util-v1
+                        Column:
+                          DataSetIdentifier: productive_util
+                          ColumnName: nb_productive_hours
+                        AggregationFunction:
+                          SimpleNumericalAggregation: SUM
+                    - NumericalMeasureField:
+                        FieldId: tbl-util-v2
+                        Column:
+                          DataSetIdentifier: productive_util
+                          ColumnName: nb_non_productive_hours
+                        AggregationFunction:
+                          SimpleNumericalAggregation: SUM
+                    - NumericalMeasureField:
+                        FieldId: tbl-util-v3
+                        Column:
+                          DataSetIdentifier: productive_util
+                          ColumnName: non_logged_hours
+                        AggregationFunction:
+                          SimpleNumericalAggregation: SUM
+                    - NumericalMeasureField:
+                        FieldId: tbl-util-v4
+                        Column:
+                          DataSetIdentifier: productive_util
+                          ColumnName: available_hours
+                        AggregationFunction:
+                          SimpleNumericalAggregation: SUM
+                SortConfiguration: {}
+                TableOptions:
+                  HeaderStyle:
+                    FontConfiguration:
+                      FontColor: '#FFFFFF'
+                    BackgroundColor: '#27164F'
+                  RowAlternateColorOptions:
+                    Status: ENABLED
+                    RowAlternateColors:
+                    - '#2A1545'
+                FieldOptions:
+                  SelectedFieldOptions:
+                  - FieldId: tbl-util-g0
+                    CustomLabel: Name
+                  - FieldId: tbl-util-g1
+                    CustomLabel: POD
+                  - FieldId: tbl-util-g2
+                    CustomLabel: Practice
+                  - FieldId: tbl-util-v0
+                    CustomLabel: Billable Hrs
+                  - FieldId: tbl-util-v1
+                    CustomLabel: NB Productive
+                  - FieldId: tbl-util-v3
+                    CustomLabel: Non-Logged
+                  - FieldId: tbl-util-v4
+                    CustomLabel: Available Hrs
+              Actions: []
+          - KPIVisual:
+              VisualId: kpi-tu-nb-productive
+              Title:
+                Visibility: VISIBLE
+                FormatText:
+                  PlainText: NB Productive Hrs
+              Subtitle:
+                Visibility: HIDDEN
+              ChartConfiguration:
+                FieldWells:
+                  Values:
+                  - NumericalMeasureField:
+                      FieldId: kpi-tu-nbp-val
+                      Column:
+                        DataSetIdentifier: kpi_snapshots
+                        ColumnName: productive_nb_hours
+                      AggregationFunction:
+                        SimpleNumericalAggregation: MAX
+                  TargetValues:
+                  - NumericalMeasureField:
+                      FieldId: kpi-tu-nbp-tgt
+                      Column:
+                        DataSetIdentifier: kpi_snapshots
+                        ColumnName: productive_nb_prev
+                      AggregationFunction:
+                        SimpleNumericalAggregation: MAX
+                  TrendGroups: []
+                SortConfiguration: {}
+                KPIOptions:
+                  Comparison:
+                    ComparisonMethod: DIFFERENCE
+                  PrimaryValueDisplayType: ACTUAL
+                  Sparkline:
+                    Visibility: HIDDEN
+                    Type: LINE
+                    TooltipVisibility: HIDDEN
+              Actions: []
+              ColumnHierarchies: []
+          - KPIVisual:
+              VisualId: kpi-tu-nb-nonproductive
+              Title:
+                Visibility: VISIBLE
+                FormatText:
+                  PlainText: NB Non-Productive Hrs
+              Subtitle:
+                Visibility: HIDDEN
+              ChartConfiguration:
+                FieldWells:
+                  Values:
+                  - NumericalMeasureField:
+                      FieldId: kpi-tu-nbnp-val
+                      Column:
+                        DataSetIdentifier: kpi_snapshots
+                        ColumnName: nb_nonproductive_hours
+                      AggregationFunction:
+                        SimpleNumericalAggregation: MAX
+                  TargetValues:
+                  - NumericalMeasureField:
+                      FieldId: kpi-tu-nbnp-tgt
+                      Column:
+                        DataSetIdentifier: kpi_snapshots
+                        ColumnName: nb_nonproductive_prev
+                      AggregationFunction:
+                        SimpleNumericalAggregation: MAX
+                  TrendGroups: []
+                SortConfiguration: {}
+                KPIOptions:
+                  Comparison:
+                    ComparisonMethod: DIFFERENCE
+                  PrimaryValueDisplayType: ACTUAL
+                  Sparkline:
+                    Visibility: HIDDEN
+                    Type: LINE
+                    TooltipVisibility: HIDDEN
+              Actions: []
+              ColumnHierarchies: []
+          Layouts:
+          - Configuration:
+              GridLayout:
+                Elements:
+                - ElementId: kpi-tu-billable
+                  ElementType: VISUAL
+                  ColumnIndex: 0
+                  ColumnSpan: 9
+                  RowIndex: 0
+                  RowSpan: 4
+                - ElementId: kpi-tu-compliance
+                  ElementType: VISUAL
+                  ColumnIndex: 9
+                  ColumnSpan: 9
+                  RowIndex: 0
+                  RowSpan: 4
+                - ElementId: kpi-tu-missing
+                  ElementType: VISUAL
+                  ColumnIndex: 18
+                  ColumnSpan: 9
+                  RowIndex: 0
+                  RowSpan: 4
+                - ElementId: kpi-tu-presales
+                  ElementType: VISUAL
+                  ColumnIndex: 27
+                  ColumnSpan: 9
+                  RowIndex: 0
+                  RowSpan: 4
+                - ElementId: tbl-missing
+                  ElementType: VISUAL
+                  ColumnIndex: 0
+                  ColumnSpan: 18
+                  RowIndex: 8
+                  RowSpan: 14
+                - ElementId: tbl-util
+                  ElementType: VISUAL
+                  ColumnIndex: 18
+                  ColumnSpan: 18
+                  RowIndex: 8
+                  RowSpan: 14
+                - ElementId: kpi-tu-nb-productive
+                  ElementType: VISUAL
+                  ColumnIndex: 0
+                  ColumnSpan: 18
+                  RowIndex: 4
+                  RowSpan: 4
+                - ElementId: kpi-tu-nb-nonproductive
+                  ElementType: VISUAL
+                  ColumnIndex: 18
+                  ColumnSpan: 18
+                  RowIndex: 4
+                  RowSpan: 4
+          ContentType: INTERACTIVE
+        - SheetId: sheet-compliance-history
+          Name: Compliance History
+          Visuals:
+          - KPIVisual:
+              VisualId: kpi-ch-compliance
+              Title:
+                Visibility: VISIBLE
+                FormatText:
+                  PlainText: Latest Week Compliance %
+              Subtitle:
+                Visibility: VISIBLE
+              ChartConfiguration:
+                FieldWells:
+                  Values:
+                  - NumericalMeasureField:
+                      FieldId: kpi-ch-v
+                      Column:
+                        DataSetIdentifier: compliance_history
+                        ColumnName: is_compliant
+                      AggregationFunction:
+                        SimpleNumericalAggregation: AVERAGE
+                  TargetValues: []
+                  TrendGroups: []
+                SortConfiguration: {}
+                KPIOptions:
+                  PrimaryValueDisplayType: ACTUAL
+                  Sparkline:
+                    Visibility: HIDDEN
+                    Type: LINE
+                    TooltipVisibility: HIDDEN
+              Actions: []
+              ColumnHierarchies: []
+          - LineChartVisual:
+              VisualId: line-ch-trend
+              Title:
+                Visibility: VISIBLE
+                FormatText:
+                  PlainText: Weekly Compliance Trend by Practice
+              Subtitle:
+                Visibility: VISIBLE
+              ChartConfiguration:
+                FieldWells:
+                  LineChartAggregatedFieldWells:
+                    Category:
+                    - DateDimensionField:
+                        FieldId: line-ch-x
+                        Column:
+                          DataSetIdentifier: compliance_history
+                          ColumnName: week_start
+                        DateGranularity: WEEK
+                        HierarchyId: line-ch-x
+                    Values:
+                    - NumericalMeasureField:
+                        FieldId: line-ch-y
+                        Column:
+                          DataSetIdentifier: compliance_history
+                          ColumnName: is_compliant
+                        AggregationFunction:
+                          SimpleNumericalAggregation: AVERAGE
+                    Colors:
+                    - CategoricalDimensionField:
+                        FieldId: line-ch-color
+                        Column:
+                          DataSetIdentifier: compliance_history
+                          ColumnName: practice_alignment
+                SortConfiguration: {}
+                Type: LINE
+                Legend:
+                  Visibility: VISIBLE
+                  Position: BOTTOM
+                ReferenceLines:
+                - Status: ENABLED
+                  DataConfiguration:
+                    StaticConfiguration:
+                      Value: 0.9
+                    AxisBinding: PRIMARY_YAXIS
+                    SeriesType: LINE
+                  StyleConfiguration:
+                    Pattern: DASHED
+                    Color: '#33A94F'
+                  LabelConfiguration:
+                    CustomLabelConfiguration:
+                      CustomLabel: Target 90%
+                    FontConfiguration:
+                      FontSize:
+                        Relative: MEDIUM
+                    HorizontalPosition: RIGHT
+                    VerticalPosition: ABOVE
+              Actions: []
+              ColumnHierarchies:
+              - DateTimeHierarchy:
+                  HierarchyId: line-ch-x
+                  DrillDownFilters: []
+          - BarChartVisual:
+              VisualId: bar-ch-quarterly
+              Title:
+                Visibility: VISIBLE
+                FormatText:
+                  PlainText: Quarterly Compliance Count by Practice
+              Subtitle:
+                Visibility: VISIBLE
+              ChartConfiguration:
+                FieldWells:
+                  BarChartAggregatedFieldWells:
+                    Category:
+                    - CategoricalDimensionField:
+                        FieldId: bar-ch-c
+                        Column:
+                          DataSetIdentifier: compliance_history
+                          ColumnName: quarter_label
+                    Values:
+                    - NumericalMeasureField:
+                        FieldId: bar-ch-v
+                        Column:
+                          DataSetIdentifier: compliance_history
+                          ColumnName: is_compliant
+                        AggregationFunction:
+                          SimpleNumericalAggregation: SUM
+                    Colors:
+                    - CategoricalDimensionField:
+                        FieldId: bar-ch-color
+                        Column:
+                          DataSetIdentifier: compliance_history
+                          ColumnName: practice_alignment
+                SortConfiguration: {}
+                Orientation: VERTICAL
+                BarsArrangement: STACKED
+                Legend:
+                  Visibility: VISIBLE
+                  Position: BOTTOM
+                DataLabels:
+                  Visibility: HIDDEN
+                  Overlap: DISABLE_OVERLAP
+              Actions: []
+              ColumnHierarchies: []
+          Layouts:
+          - Configuration:
+              GridLayout:
+                Elements:
+                - ElementId: kpi-ch-compliance
+                  ElementType: VISUAL
+                  ColumnIndex: 0
+                  ColumnSpan: 36
+                  RowIndex: 0
+                  RowSpan: 4
+                - ElementId: line-ch-trend
+                  ElementType: VISUAL
+                  ColumnIndex: 0
+                  ColumnSpan: 36
+                  RowIndex: 4
+                  RowSpan: 14
+                - ElementId: bar-ch-quarterly
+                  ElementType: VISUAL
+                  ColumnIndex: 0
+                  ColumnSpan: 36
+                  RowIndex: 18
+                  RowSpan: 14
+                CanvasSizeOptions:
+                  ScreenCanvasSizeOptions:
+                    ResizeOption: RESPONSIVE
+          ContentType: INTERACTIVE
+        - SheetId: sheet-util-history
+          Name: Utilization History
+          Visuals:
+          - KPIVisual:
+              VisualId: kpi-uh-billable
+              Title:
+                Visibility: VISIBLE
+                FormatText:
+                  PlainText: Latest Week Avg Billable Hours
+              Subtitle:
+                Visibility: VISIBLE
+              ChartConfiguration:
+                FieldWells:
+                  Values:
+                  - NumericalMeasureField:
+                      FieldId: kpi-uh-v
+                      Column:
+                        DataSetIdentifier: util_history
+                        ColumnName: billable_hours
+                      AggregationFunction:
+                        SimpleNumericalAggregation: AVERAGE
+                  TargetValues: []
+                  TrendGroups: []
+                SortConfiguration: {}
+                KPIOptions:
+                  PrimaryValueDisplayType: ACTUAL
+                  Sparkline:
+                    Visibility: HIDDEN
+                    Type: LINE
+                    TooltipVisibility: HIDDEN
+              Actions: []
+              ColumnHierarchies: []
+          - KPIVisual:
+              VisualId: kpi-uh-nb-productive
+              Title:
+                Visibility: VISIBLE
+                FormatText:
+                  PlainText: Latest Week Avg NB Productive Hours
+              Subtitle:
+                Visibility: VISIBLE
+              ChartConfiguration:
+                FieldWells:
+                  Values:
+                  - NumericalMeasureField:
+                      FieldId: kpi-uh-nb-v
+                      Column:
+                        DataSetIdentifier: util_history
+                        ColumnName: nb_productive_hours
+                      AggregationFunction:
+                        SimpleNumericalAggregation: AVERAGE
+                  TargetValues: []
+                  TrendGroups: []
+                SortConfiguration: {}
+                KPIOptions:
+                  PrimaryValueDisplayType: ACTUAL
+                  Sparkline:
+                    Visibility: HIDDEN
+                    Type: LINE
+                    TooltipVisibility: HIDDEN
+              Actions: []
+              ColumnHierarchies: []
+          - LineChartVisual:
+              VisualId: line-uh-trend
+              Title:
+                Visibility: VISIBLE
+                FormatText:
+                  PlainText: Weekly Utilization Trend — Billable vs NB Productive
+              Subtitle:
+                Visibility: VISIBLE
+              ChartConfiguration:
+                FieldWells:
+                  LineChartAggregatedFieldWells:
+                    Category:
+                    - DateDimensionField:
+                        FieldId: line-uh-x
+                        Column:
+                          DataSetIdentifier: util_history
+                          ColumnName: week_start
+                        DateGranularity: WEEK
+                        HierarchyId: line-uh-x
+                    Values:
+                    - NumericalMeasureField:
+                        FieldId: line-uh-y0
+                        Column:
+                          DataSetIdentifier: util_history
+                          ColumnName: billable_hours
+                        AggregationFunction:
+                          SimpleNumericalAggregation: AVERAGE
+                    - NumericalMeasureField:
+                        FieldId: line-uh-y1
+                        Column:
+                          DataSetIdentifier: util_history
+                          ColumnName: nb_productive_hours
+                        AggregationFunction:
+                          SimpleNumericalAggregation: AVERAGE
+                    Colors: []
+                SortConfiguration: {}
+                Type: LINE
+                Legend:
+                  Visibility: VISIBLE
+                  Position: BOTTOM
+              Actions: []
+              ColumnHierarchies:
+              - DateTimeHierarchy:
+                  HierarchyId: line-uh-x
+                  DrillDownFilters: []
+          - BarChartVisual:
+              VisualId: bar-uh-quarterly
+              Title:
+                Visibility: VISIBLE
+                FormatText:
+                  PlainText: Quarterly Avg Billable Hours by Practice
+              Subtitle:
+                Visibility: VISIBLE
+              ChartConfiguration:
+                FieldWells:
+                  BarChartAggregatedFieldWells:
+                    Category:
+                    - CategoricalDimensionField:
+                        FieldId: bar-uh-c
+                        Column:
+                          DataSetIdentifier: util_history
+                          ColumnName: quarter_label
+                    Values:
+                    - NumericalMeasureField:
+                        FieldId: bar-uh-v
+                        Column:
+                          DataSetIdentifier: util_history
+                          ColumnName: billable_hours
+                        AggregationFunction:
+                          SimpleNumericalAggregation: AVERAGE
+                    Colors:
+                    - CategoricalDimensionField:
+                        FieldId: bar-uh-color
+                        Column:
+                          DataSetIdentifier: util_history
+                          ColumnName: practice_alignment
+                SortConfiguration: {}
+                Orientation: VERTICAL
+                BarsArrangement: CLUSTERED
+                VisualPalette:
+                  ChartColor: '#0089DD'
+                Legend:
+                  Visibility: VISIBLE
+                  Position: BOTTOM
+                DataLabels:
+                  Visibility: HIDDEN
+                  Overlap: DISABLE_OVERLAP
+              Actions: []
+              ColumnHierarchies: []
+          Layouts:
+          - Configuration:
+              GridLayout:
+                Elements:
+                - ElementId: kpi-uh-billable
+                  ElementType: VISUAL
+                  ColumnIndex: 0
+                  ColumnSpan: 18
+                  RowIndex: 0
+                  RowSpan: 4
+                - ElementId: kpi-uh-nb-productive
+                  ElementType: VISUAL
+                  ColumnIndex: 18
+                  ColumnSpan: 18
+                  RowIndex: 0
+                  RowSpan: 4
+                - ElementId: line-uh-trend
+                  ElementType: VISUAL
+                  ColumnIndex: 0
+                  ColumnSpan: 36
+                  RowIndex: 4
+                  RowSpan: 14
+                - ElementId: bar-uh-quarterly
+                  ElementType: VISUAL
+                  ColumnIndex: 0
+                  ColumnSpan: 36
+                  RowIndex: 18
+                  RowSpan: 14
+                CanvasSizeOptions:
+                  ScreenCanvasSizeOptions:
+                    ResizeOption: RESPONSIVE
+          ContentType: INTERACTIVE
+        - SheetId: sheet-resource-capacity
+          Name: Resource Capacity
+          Visuals:
+          - KPIVisual:
+              VisualId: kpi-rc-total
+              Title:
+                Visibility: VISIBLE
+                FormatText:
+                  PlainText: Total Weekly Capacity (hrs)
+              Subtitle:
+                Visibility: VISIBLE
+              ChartConfiguration:
+                FieldWells:
+                  Values:
+                  - NumericalMeasureField:
+                      FieldId: kpi-rc-v
+                      Column:
+                        DataSetIdentifier: capacity_plan
+                        ColumnName: weekly_capacity
+                      AggregationFunction:
+                        SimpleNumericalAggregation: SUM
+                  TargetValues: []
+                  TrendGroups: []
+                SortConfiguration: {}
+                KPIOptions:
+                  PrimaryValueDisplayType: ACTUAL
+                  Sparkline:
+                    Visibility: HIDDEN
+                    Type: LINE
+                    TooltipVisibility: HIDDEN
+              Actions: []
+              ColumnHierarchies: []
+          - KPIVisual:
+              VisualId: kpi-rc-available
+              Title:
+                Visibility: VISIBLE
+                FormatText:
+                  PlainText: Available Capacity (hrs)
+              Subtitle:
+                Visibility: VISIBLE
+              ChartConfiguration:
+                FieldWells:
+                  Values:
+                  - NumericalMeasureField:
+                      FieldId: kpi-rc-avail-v
+                      Column:
+                        DataSetIdentifier: capacity_plan
+                        ColumnName: capacity_available
+                      AggregationFunction:
+                        SimpleNumericalAggregation: SUM
+                  TargetValues: []
+                  TrendGroups: []
+                SortConfiguration: {}
+                KPIOptions:
+                  PrimaryValueDisplayType: ACTUAL
+                  Sparkline:
+                    Visibility: HIDDEN
+                    Type: LINE
+                    TooltipVisibility: HIDDEN
+              Actions: []
+              ColumnHierarchies: []
+          - PivotTableVisual:
+              VisualId: pivot-rc-capacity
+              Title:
+                Visibility: VISIBLE
+                FormatText:
+                  PlainText: Resource Capacity — Hours by Person by Week
+              Subtitle:
+                Visibility: VISIBLE
+              ChartConfiguration:
+                FieldWells:
+                  PivotTableAggregatedFieldWells:
+                    Rows:
+                    - CategoricalDimensionField:
+                        FieldId: pivot-rc-row
+                        Column:
+                          DataSetIdentifier: capacity_plan
+                          ColumnName: user_name
+                    Columns:
+                    - CategoricalDimensionField:
+                        FieldId: pivot-rc-col
+                        Column:
+                          DataSetIdentifier: capacity_plan
+                          ColumnName: week_label
+                    Values:
+                    - NumericalMeasureField:
+                        FieldId: pivot-rc-val
+                        Column:
+                          DataSetIdentifier: capacity_plan
+                          ColumnName: hours
+                        AggregationFunction:
+                          SimpleNumericalAggregation: SUM
+                SortConfiguration:
+                  FieldSortOptions: []
+                TableOptions:
+                  MetricPlacement: ROW
+                  SingleMetricVisibility: HIDDEN
+                  ColumnNamesVisibility: VISIBLE
+                  ColumnHeaderStyle: {}
+                  CellStyle: {}
+                  RowFieldNamesStyle: {}
+                TotalOptions:
+                  RowSubtotalOptions:
+                    TotalsVisibility: HIDDEN
+                    TotalCellStyle: {}
+                    ValueCellStyle: {}
+                    MetricHeaderCellStyle: {}
+                    StyleTargets:
+                    - CellType: VALUE
+                    - CellType: TOTAL
+                    - CellType: METRIC_HEADER
+                  ColumnSubtotalOptions:
+                    TotalsVisibility: HIDDEN
+                  RowTotalOptions:
+                    TotalsVisibility: VISIBLE
+                    Placement: END
+                  ColumnTotalOptions:
+                    TotalsVisibility: VISIBLE
+                    Placement: END
+                FieldOptions:
+                  SelectedFieldOptions:
+                  - FieldId: pivot-rc-row
+                    Visibility: VISIBLE
+                  - FieldId: pivot-rc-col
+                    Visibility: VISIBLE
+                  - FieldId: pivot-rc-val
+                    Visibility: VISIBLE
+              Actions: []
+          Layouts:
+          - Configuration:
+              GridLayout:
+                Elements:
+                - ElementId: kpi-rc-total
+                  ElementType: VISUAL
+                  ColumnIndex: 0
+                  ColumnSpan: 18
+                  RowIndex: 0
+                  RowSpan: 4
+                - ElementId: kpi-rc-available
+                  ElementType: VISUAL
+                  ColumnIndex: 18
+                  ColumnSpan: 18
+                  RowIndex: 0
+                  RowSpan: 4
+                - ElementId: pivot-rc-capacity
+                  ElementType: VISUAL
+                  ColumnIndex: 0
+                  ColumnSpan: 36
+                  RowIndex: 4
+                  RowSpan: 21
+                CanvasSizeOptions:
+                  ScreenCanvasSizeOptions:
+                    ResizeOption: RESPONSIVE
+          ContentType: INTERACTIVE
+        CalculatedFields:
+        - DataSetIdentifier: kpi_snapshots
+          Name: other_billable_hours
+          Expression: '{total_billable_hours} - coalesce({ps_billable_hours}, 0) -
+            coalesce({mc_billable_hours}, 0)'
+        - DataSetIdentifier: project_hours_summary
+          Name: client_project
+          Expression: concat({client_name}, ' — ', {project_name})
+        ParameterDeclarations:
+        - DateTimeParameterDeclaration:
+            Name: pWeekStart
+            DefaultValues:
+              StaticValues:
+              - 2026-06-22 20:00:00-04:00
+            TimeGranularity: DAY
+        FilterGroups:
+        - FilterGroupId: fg-kpi-s1
+          Filters:
+          - TimeEqualityFilter:
+              FilterId: fg-kpi-s1
+              Column:
+                DataSetIdentifier: kpi_snapshots
+                ColumnName: week_start_date
+              ParameterName: pWeekStart
+              TimeGranularity: DAY
+          ScopeConfiguration:
+            SelectedSheets:
+              SheetVisualScopingConfigurations:
+              - SheetId: sheet-weekly-pulse
+                Scope: SELECTED_VISUALS
+                VisualIds:
+                - kpi-billable-util
+                - kpi-productive-util
+                - kpi-compliance
+                - kpi-headcount
+                - kpi-escalations
+                - kpi-presales
+                - kpi-wp-ps-billable
+                - kpi-wp-mc-billable
+                - kpi-wp-other-billable
+                - kpi-wp-nb-productive
+                - kpi-wp-nb-nonproductive
+          Status: ENABLED
+          CrossDataset: SINGLE_DATASET
+        - FilterGroupId: fg-kpi-s2
+          Filters:
+          - TimeEqualityFilter:
+              FilterId: fg-kpi-s2
+              Column:
+                DataSetIdentifier: kpi_snapshots
+                ColumnName: week_start_date
+              ParameterName: pWeekStart
+              TimeGranularity: DAY
+          ScopeConfiguration:
+            SelectedSheets:
+              SheetVisualScopingConfigurations:
+              - SheetId: sheet-ps-delivery
+                Scope: SELECTED_VISUALS
+                VisualIds:
+                - kpi-ps-active
+                - kpi-ps-green
+                - kpi-ps-red
+                - kpi-ps-duration
+                - kpi-ps-ontime
+                - kpi-ps-billable
+          Status: ENABLED
+          CrossDataset: SINGLE_DATASET
+        - FilterGroupId: fg-kpi-s4
+          Filters:
+          - TimeEqualityFilter:
+              FilterId: fg-kpi-s4
+              Column:
+                DataSetIdentifier: kpi_snapshots
+                ColumnName: week_start_date
+              ParameterName: pWeekStart
+              TimeGranularity: DAY
+          ScopeConfiguration:
+            SelectedSheets:
+              SheetVisualScopingConfigurations:
+              - SheetId: sheet-mc-delivery
+                Scope: SELECTED_VISUALS
+                VisualIds:
+                - kpi-mc-active
+                - kpi-mc-green
+                - kpi-mc-red
+          Status: ENABLED
+          CrossDataset: SINGLE_DATASET
+        - FilterGroupId: fg-mc-s3
+          Filters:
+          - TimeEqualityFilter:
+              FilterId: fg-mc-s3
+              Column:
+                DataSetIdentifier: mc_activity
+                ColumnName: week_start
+              ParameterName: pWeekStart
+              TimeGranularity: DAY
+          ScopeConfiguration:
+            SelectedSheets:
+              SheetVisualScopingConfigurations:
+              - SheetId: sheet-mc-delivery
+                Scope: ALL_VISUALS
+          Status: ENABLED
+          CrossDataset: SINGLE_DATASET
+        - FilterGroupId: fg-kpi-s5
+          Filters:
+          - TimeEqualityFilter:
+              FilterId: fg-kpi-s5
+              Column:
+                DataSetIdentifier: kpi_snapshots
+                ColumnName: week_start_date
+              ParameterName: pWeekStart
+              TimeGranularity: DAY
+          ScopeConfiguration:
+            SelectedSheets:
+              SheetVisualScopingConfigurations:
+              - SheetId: sheet-time-util
+                Scope: SELECTED_VISUALS
+                VisualIds:
+                - kpi-tu-billable
+                - kpi-tu-compliance
+                - kpi-tu-presales
+          Status: ENABLED
+          CrossDataset: SINGLE_DATASET
+        - FilterGroupId: fg-util-s5
+          Filters:
+          - TimeEqualityFilter:
+              FilterId: fg-util-s5
+              Column:
+                DataSetIdentifier: productive_util
+                ColumnName: week_start
+              ParameterName: pWeekStart
+              TimeGranularity: DAY
+          ScopeConfiguration:
+            SelectedSheets:
+              SheetVisualScopingConfigurations:
+              - SheetId: sheet-time-util
+                Scope: SELECTED_VISUALS
+                VisualIds:
+                - tbl-util
+          Status: ENABLED
+          CrossDataset: SINGLE_DATASET
+        - FilterGroupId: fg-compliance-week
+          Filters:
+          - TimeEqualityFilter:
+              FilterId: fg-compliance-week
+              Column:
+                DataSetIdentifier: compliance
+                ColumnName: week_start_date
+              ParameterName: pWeekStart
+              TimeGranularity: DAY
+          ScopeConfiguration:
+            SelectedSheets:
+              SheetVisualScopingConfigurations:
+              - SheetId: sheet-time-util
+                Scope: SELECTED_VISUALS
+                VisualIds:
+                - tbl-missing
+          Status: ENABLED
+          CrossDataset: SINGLE_DATASET
+        - FilterGroupId: fg-wc-s1
+          Filters:
+          - TimeEqualityFilter:
+              FilterId: fg-wc-s1
+              Column:
+                DataSetIdentifier: project_hours_summary
+                ColumnName: week_start_date
+              ParameterName: pWeekStart
+              TimeGranularity: DAY
+          ScopeConfiguration:
+            SelectedSheets:
+              SheetVisualScopingConfigurations:
+              - SheetId: sheet-weekly-pulse
+                Scope: SELECTED_VISUALS
+                VisualIds:
+                - wc-project-hours
+          Status: ENABLED
+          CrossDataset: SINGLE_DATASET
+        - FilterGroupId: fg-ps-health
+          Filters:
+          - CategoryFilter:
+              FilterId: fg-ps-health
+              Column:
+                DataSetIdentifier: ps_projects
+                ColumnName: health
+              Configuration:
+                FilterListConfiguration:
+                  MatchOperator: CONTAINS
+                  SelectAllOptions: FILTER_ALL_VALUES
+                  NullOption: ALL_VALUES
+          ScopeConfiguration:
+            SelectedSheets:
+              SheetVisualScopingConfigurations:
+              - SheetId: sheet-ps-delivery
+                Scope: SELECTED_VISUALS
+                VisualIds:
+                - donut-ps-health
+          Status: ENABLED
+          CrossDataset: SINGLE_DATASET
+        - FilterGroupId: fg-ps-week
+          Filters:
+          - TimeEqualityFilter:
+              FilterId: fg-ps-week
+              Column:
+                DataSetIdentifier: ps_projects
+                ColumnName: week_start
+              ParameterName: pWeekStart
+              TimeGranularity: DAY
+          ScopeConfiguration:
+            SelectedSheets:
+              SheetVisualScopingConfigurations:
+              - SheetId: sheet-ps-delivery
+                Scope: SELECTED_VISUALS
+                VisualIds:
+                - donut-ps-health
+          Status: ENABLED
+          CrossDataset: SINGLE_DATASET
+        - FilterGroupId: fg-esc-open
+          Filters:
+          - CategoryFilter:
+              FilterId: fg-esc-open
+              Column:
+                DataSetIdentifier: escalations
+                ColumnName: escalation_state
+              Configuration:
+                FilterListConfiguration:
+                  MatchOperator: DOES_NOT_CONTAIN
+                  CategoryValues:
+                  - Done
+                  NullOption: ALL_VALUES
+          ScopeConfiguration:
+            SelectedSheets:
+              SheetVisualScopingConfigurations:
+              - SheetId: sheet-escalations
+                Scope: ALL_VISUALS
+          Status: ENABLED
+          CrossDataset: SINGLE_DATASET
+        - FilterGroupId: fg-compliance-status
+          Filters:
+          - CategoryFilter:
+              FilterId: fg-compliance-status
+              Column:
+                DataSetIdentifier: compliance
+                ColumnName: submission_status
+              Configuration:
+                FilterListConfiguration:
+                  MatchOperator: CONTAINS
+                  SelectAllOptions: FILTER_ALL_VALUES
+                  NullOption: ALL_VALUES
+          ScopeConfiguration:
+            SelectedSheets:
+              SheetVisualScopingConfigurations:
+              - SheetId: sheet-time-util
+                Scope: ALL_VISUALS
+          Status: ENABLED
+          CrossDataset: SINGLE_DATASET
+        - FilterGroupId: fg-ps-category
+          Filters:
+          - CategoryFilter:
+              FilterId: fg-ps-category
+              Column:
+                DataSetIdentifier: ps_projects
+                ColumnName: category
+              Configuration:
+                FilterListConfiguration:
+                  MatchOperator: CONTAINS
+                  CategoryValues:
+                  - PS
+                  NullOption: NON_NULLS_ONLY
+          ScopeConfiguration:
+            SelectedSheets:
+              SheetVisualScopingConfigurations:
+              - SheetId: sheet-ps-delivery
+                Scope: ALL_VISUALS
+          Status: ENABLED
+          CrossDataset: SINGLE_DATASET
+        - FilterGroupId: fg-ps-not-done
+          Filters:
+          - CategoryFilter:
+              FilterId: fg-ps-not-done
+              Column:
+                DataSetIdentifier: ps_projects
+                ColumnName: status_category
+              Configuration:
+                FilterListConfiguration:
+                  MatchOperator: DOES_NOT_CONTAIN
+                  CategoryValues:
+                  - Done
+                  NullOption: ALL_VALUES
+          ScopeConfiguration:
+            SelectedSheets:
+              SheetVisualScopingConfigurations:
+              - SheetId: sheet-ps-delivery
+                Scope: ALL_VISUALS
+          Status: ENABLED
+          CrossDataset: SINGLE_DATASET
+        - FilterGroupId: fg-ps-issue-emailed
+          Filters:
+          - CategoryFilter:
+              FilterId: fg-ps-issue-emailed
+              Column:
+                DataSetIdentifier: ps_projects
+                ColumnName: issue_type
+              Configuration:
+                FilterListConfiguration:
+                  MatchOperator: CONTAINS
+                  CategoryValues:
+                  - Emailed request
+                  NullOption: NON_NULLS_ONLY
+          ScopeConfiguration:
+            SelectedSheets:
+              SheetVisualScopingConfigurations:
+              - SheetId: sheet-ps-delivery
+                Scope: SELECTED_VISUALS
+                VisualIds:
+                - donut-ps-health
+          Status: ENABLED
+          CrossDataset: SINGLE_DATASET
+        ColumnConfigurations:
+        - Column:
+            DataSetIdentifier: capacity_plan
+            ColumnName: estimated_completion
+          FormatConfiguration:
+            DateTimeFormatConfiguration:
+              DateTimeFormat: MM/DD/YY
+              NullValueFormatConfiguration:
+                NullString: '-'
+        - Column:
+            DataSetIdentifier: capacity_plan
+            ColumnName: week_start
+          FormatConfiguration:
+            DateTimeFormatConfiguration:
+              DateTimeFormat: MM/DD/YY
+              NullValueFormatConfiguration:
+                NullString: '-'
+        - Column:
+            DataSetIdentifier: compliance_history
+            ColumnName: week_start
+          FormatConfiguration:
+            DateTimeFormatConfiguration:
+              DateTimeFormat: MM/DD/YY
+              NullValueFormatConfiguration:
+                NullString: '-'
+        - Column:
+            DataSetIdentifier: kpi_snapshots
+            ColumnName: week_start_date
+          FormatConfiguration:
+            DateTimeFormatConfiguration:
+              DateTimeFormat: MM/DD/YY
+              NullValueFormatConfiguration:
+                NullString: '-'
+        - Column:
+            DataSetIdentifier: productive_util
+            ColumnName: week_start
+          FormatConfiguration:
+            DateTimeFormatConfiguration:
+              DateTimeFormat: MM/DD/YY
+              NullValueFormatConfiguration:
+                NullString: '-'
+        - Column:
+            DataSetIdentifier: project_hours_summary
+            ColumnName: week_start_date
+          FormatConfiguration:
+            DateTimeFormatConfiguration:
+              DateTimeFormat: MM/DD/YY
+              NullValueFormatConfiguration:
+                NullString: '-'
+        - Column:
+            DataSetIdentifier: ps_projects
+            ColumnName: week_start
+          FormatConfiguration:
+            DateTimeFormatConfiguration:
+              DateTimeFormat: MM/DD/YY
+              NullValueFormatConfiguration:
+                NullString: '-'
+        - Column:
+            DataSetIdentifier: util_history
+            ColumnName: week_start
+          FormatConfiguration:
+            DateTimeFormatConfiguration:
+              DateTimeFormat: MM/DD/YY
+              NullValueFormatConfiguration:
+                NullString: '-'
+        AnalysisDefaults:
+          DefaultNewSheetConfiguration:
+            InteractiveLayoutConfiguration:
+              Grid:
+                CanvasSizeOptions:
+                  ScreenCanvasSizeOptions:
+                    ResizeOption: RESPONSIVE
+            SheetContentType: INTERACTIVE
+      Permissions:
+      - Principal:
+          Ref: QuickSightOwnerArn
+        Actions:
+        - quicksight:RestoreAnalysis
+        - quicksight:UpdateAnalysisPermissions
+        - quicksight:DeleteAnalysis
+        - quicksight:DescribeAnalysisPermissions
+        - quicksight:QueryAnalysis
+        - quicksight:DescribeAnalysis
+        - quicksight:UpdateAnalysis
+Outputs:
+  CooOperationalAnalysisId:
+    Description: COO Operational Analysis ID
+    Value:
+      Fn::Sub: coo-operational-analysis-${Environment}

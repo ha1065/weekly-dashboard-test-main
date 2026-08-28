@@ -1,0 +1,1305 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: QuickSight Datasets and Analyses for Clockify Weekly Reporting
+
+Parameters:
+  Environment:
+    Type: String
+    Default: prod
+    AllowedValues:
+      - dev
+      - staging
+      - prod
+
+  QuickSightUsername:
+    Type: String
+    Description: QuickSight username (typically your IAM user or SSO identity)
+
+  AwsAccountId:
+    Type: String
+    Description: AWS Account ID
+
+  VpcConnectionArn:
+    Type: String
+    Description: ARN of the QuickSight VPC connection to the RDS database
+
+  DatabaseHost:
+    Type: String
+    Description: RDS PostgreSQL endpoint
+
+  DatabaseName:
+    Type: String
+    Default: clockify_reporting
+
+  DatabaseUsername:
+    Type: String
+    Default: admin
+
+  DatabasePassword:
+    Type: String
+    NoEcho: true
+    Description: Database password
+
+Resources:
+  # ============================================================
+  # Data Source - PostgreSQL Connection
+  # ============================================================
+  ClockifyDataSource:
+    Type: AWS::QuickSight::DataSource
+    Properties:
+      AwsAccountId: !Ref AwsAccountId
+      DataSourceId: !Sub clockify-datasource-${Environment}
+      Name: !Sub Clockify PostgreSQL (${Environment})
+      Type: POSTGRESQL
+      DataSourceParameters:
+        PostgreSqlParameters:
+          Host: !Ref DatabaseHost
+          Port: 5432
+          Database: !Ref DatabaseName
+      Credentials:
+        CredentialPair:
+          Username: !Ref DatabaseUsername
+          Password: !Ref DatabasePassword
+      VpcConnectionProperties:
+        VpcConnectionArn: !Ref VpcConnectionArn
+      SslProperties:
+        DisableSsl: false
+      Permissions:
+        - Principal: !Sub arn:aws:quicksight:${AWS::Region}:${AwsAccountId}:user/default/${QuickSightUsername}
+          Actions:
+            - quicksight:DescribeDataSource
+            - quicksight:DescribeDataSourcePermissions
+            - quicksight:PassDataSource
+            - quicksight:UpdateDataSource
+            - quicksight:DeleteDataSource
+            - quicksight:UpdateDataSourcePermissions
+
+  # ============================================================
+  # Dataset 1: Time Entries (Raw Data)
+  # ============================================================
+  TimeEntriesDataset:
+    Type: AWS::QuickSight::DataSet
+    DependsOn: ClockifyDataSource
+    Properties:
+      AwsAccountId: !Ref AwsAccountId
+      DataSetId: !Sub clockify-time-entries-${Environment}
+      Name: !Sub Clockify Time Entries (${Environment})
+      ImportMode: SPICE
+      PhysicalTableMap:
+        TimeEntriesTable:
+          RelationalTable:
+            DataSourceArn: !GetAtt ClockifyDataSource.Arn
+            Schema: public
+            Name: clockify_detailed_time_entries
+            InputColumns:
+              - Name: entry_id
+                Type: INTEGER
+              - Name: clockify_entry_id
+                Type: STRING
+              - Name: clockify_user_id
+                Type: STRING
+              - Name: user_name
+                Type: STRING
+              - Name: practice_alignment
+                Type: STRING
+              - Name: skill_area
+                Type: STRING
+              - Name: pod_assignment
+                Type: STRING
+              - Name: cloudelligent_title
+                Type: STRING
+              - Name: location
+                Type: STRING
+              - Name: employment_designation
+                Type: STRING
+              - Name: clockify_project_id
+                Type: STRING
+              - Name: project_name
+                Type: STRING
+              - Name: client_name
+                Type: STRING
+              - Name: description
+                Type: STRING
+              - Name: billable
+                Type: BOOLEAN
+              - Name: duration_seconds
+                Type: INTEGER
+              - Name: duration_hours
+                Type: DECIMAL
+              - Name: start_time
+                Type: DATETIME
+              - Name: end_time
+                Type: DATETIME
+              - Name: entry_date
+                Type: DATETIME
+              - Name: week_start_date
+                Type: DATETIME
+      LogicalTableMap:
+        TimeEntriesLogical:
+          Alias: Time Entries
+          Source:
+            PhysicalTableId: TimeEntriesTable
+      Permissions:
+        - Principal: !Sub arn:aws:quicksight:${AWS::Region}:${AwsAccountId}:user/default/${QuickSightUsername}
+          Actions:
+            - quicksight:DescribeDataSet
+            - quicksight:DescribeDataSetPermissions
+            - quicksight:PassDataSet
+            - quicksight:DescribeIngestion
+            - quicksight:ListIngestions
+            - quicksight:UpdateDataSet
+            - quicksight:DeleteDataSet
+            - quicksight:CreateIngestion
+            - quicksight:CancelIngestion
+            - quicksight:UpdateDataSetPermissions
+
+  # ============================================================
+  # Dataset 2: Resource Utilization View
+  # ============================================================
+  ResourceUtilizationDataset:
+    Type: AWS::QuickSight::DataSet
+    DependsOn: ClockifyDataSource
+    Properties:
+      AwsAccountId: !Ref AwsAccountId
+      DataSetId: !Sub clockify-resource-utilization-${Environment}
+      Name: !Sub Resource Utilization (${Environment})
+      ImportMode: SPICE
+      PhysicalTableMap:
+        ResourceUtilizationTable:
+          RelationalTable:
+            DataSourceArn: !GetAtt ClockifyDataSource.Arn
+            Schema: public
+            Name: vw_resource_utilization
+            InputColumns:
+              - Name: week_start_date
+                Type: DATETIME
+              - Name: clockify_user_id
+                Type: STRING
+              - Name: user_name
+                Type: STRING
+              - Name: cloudelligent_title
+                Type: STRING
+              - Name: practice_alignment
+                Type: STRING
+              - Name: skill_area
+                Type: STRING
+              - Name: pod_assignment
+                Type: STRING
+              - Name: location
+                Type: STRING
+              - Name: employment_designation
+                Type: STRING
+              - Name: daily_capacity
+                Type: DECIMAL
+              - Name: weekly_capacity
+                Type: DECIMAL
+              - Name: actual_hours
+                Type: DECIMAL
+              - Name: utilization_percent
+                Type: DECIMAL
+              - Name: billable_hours
+                Type: DECIMAL
+              - Name: billable_percent
+                Type: DECIMAL
+      LogicalTableMap:
+        ResourceUtilizationLogical:
+          Alias: Resource Utilization
+          Source:
+            PhysicalTableId: ResourceUtilizationTable
+      Permissions:
+        - Principal: !Sub arn:aws:quicksight:${AWS::Region}:${AwsAccountId}:user/default/${QuickSightUsername}
+          Actions:
+            - quicksight:DescribeDataSet
+            - quicksight:DescribeDataSetPermissions
+            - quicksight:PassDataSet
+            - quicksight:DescribeIngestion
+            - quicksight:ListIngestions
+            - quicksight:UpdateDataSet
+            - quicksight:DeleteDataSet
+            - quicksight:CreateIngestion
+            - quicksight:CancelIngestion
+            - quicksight:UpdateDataSetPermissions
+
+  # ============================================================
+  # Dataset 3: Weekly Time Summary View
+  # ============================================================
+  WeeklyTimeSummaryDataset:
+    Type: AWS::QuickSight::DataSet
+    DependsOn: ClockifyDataSource
+    Properties:
+      AwsAccountId: !Ref AwsAccountId
+      DataSetId: !Sub clockify-weekly-summary-${Environment}
+      Name: !Sub Weekly Time Summary (${Environment})
+      ImportMode: SPICE
+      PhysicalTableMap:
+        WeeklySummaryTable:
+          RelationalTable:
+            DataSourceArn: !GetAtt ClockifyDataSource.Arn
+            Schema: public
+            Name: vw_weekly_time_summary
+            InputColumns:
+              - Name: week_start_date
+                Type: DATETIME
+              - Name: week_end_date
+                Type: DATETIME
+              - Name: practice_alignment
+                Type: STRING
+              - Name: location
+                Type: STRING
+              - Name: unique_resources
+                Type: INTEGER
+              - Name: total_entries
+                Type: INTEGER
+              - Name: total_hours
+                Type: DECIMAL
+              - Name: billable_hours
+                Type: DECIMAL
+              - Name: non_billable_hours
+                Type: DECIMAL
+              - Name: avg_hours_per_entry
+                Type: DECIMAL
+      LogicalTableMap:
+        WeeklySummaryLogical:
+          Alias: Weekly Summary
+          Source:
+            PhysicalTableId: WeeklySummaryTable
+      Permissions:
+        - Principal: !Sub arn:aws:quicksight:${AWS::Region}:${AwsAccountId}:user/default/${QuickSightUsername}
+          Actions:
+            - quicksight:DescribeDataSet
+            - quicksight:DescribeDataSetPermissions
+            - quicksight:PassDataSet
+            - quicksight:DescribeIngestion
+            - quicksight:ListIngestions
+            - quicksight:UpdateDataSet
+            - quicksight:DeleteDataSet
+            - quicksight:CreateIngestion
+            - quicksight:CancelIngestion
+            - quicksight:UpdateDataSetPermissions
+
+  # ============================================================
+  # Dataset 4: Project Time Tracking View
+  # ============================================================
+  ProjectTrackingDataset:
+    Type: AWS::QuickSight::DataSet
+    DependsOn: ClockifyDataSource
+    Properties:
+      AwsAccountId: !Ref AwsAccountId
+      DataSetId: !Sub clockify-project-tracking-${Environment}
+      Name: !Sub Project Time Tracking (${Environment})
+      ImportMode: SPICE
+      PhysicalTableMap:
+        ProjectTrackingTable:
+          RelationalTable:
+            DataSourceArn: !GetAtt ClockifyDataSource.Arn
+            Schema: public
+            Name: vw_project_time_tracking
+            InputColumns:
+              - Name: week_start_date
+                Type: DATETIME
+              - Name: project_name
+                Type: STRING
+              - Name: client_name
+                Type: STRING
+              - Name: practice_alignment
+                Type: STRING
+              - Name: resources_assigned
+                Type: INTEGER
+              - Name: total_hours
+                Type: DECIMAL
+              - Name: billable_hours
+                Type: DECIMAL
+              - Name: entry_count
+                Type: INTEGER
+              - Name: first_entry_date
+                Type: DATETIME
+              - Name: last_entry_date
+                Type: DATETIME
+      LogicalTableMap:
+        ProjectTrackingLogical:
+          Alias: Project Tracking
+          Source:
+            PhysicalTableId: ProjectTrackingTable
+      Permissions:
+        - Principal: !Sub arn:aws:quicksight:${AWS::Region}:${AwsAccountId}:user/default/${QuickSightUsername}
+          Actions:
+            - quicksight:DescribeDataSet
+            - quicksight:DescribeDataSetPermissions
+            - quicksight:PassDataSet
+            - quicksight:DescribeIngestion
+            - quicksight:ListIngestions
+            - quicksight:UpdateDataSet
+            - quicksight:DeleteDataSet
+            - quicksight:CreateIngestion
+            - quicksight:CancelIngestion
+            - quicksight:UpdateDataSetPermissions
+
+  # ============================================================
+  # Dataset 5: Client Time Summary View
+  # ============================================================
+  ClientSummaryDataset:
+    Type: AWS::QuickSight::DataSet
+    DependsOn: ClockifyDataSource
+    Properties:
+      AwsAccountId: !Ref AwsAccountId
+      DataSetId: !Sub clockify-client-summary-${Environment}
+      Name: !Sub Client Time Summary (${Environment})
+      ImportMode: SPICE
+      PhysicalTableMap:
+        ClientSummaryTable:
+          RelationalTable:
+            DataSourceArn: !GetAtt ClockifyDataSource.Arn
+            Schema: public
+            Name: vw_client_time_summary
+            InputColumns:
+              - Name: week_start_date
+                Type: DATETIME
+              - Name: client_name
+                Type: STRING
+              - Name: practice_alignment
+                Type: STRING
+              - Name: active_projects
+                Type: INTEGER
+              - Name: resources_working
+                Type: INTEGER
+              - Name: total_hours
+                Type: DECIMAL
+              - Name: billable_hours
+                Type: DECIMAL
+              - Name: total_entries
+                Type: INTEGER
+      LogicalTableMap:
+        ClientSummaryLogical:
+          Alias: Client Summary
+          Source:
+            PhysicalTableId: ClientSummaryTable
+      Permissions:
+        - Principal: !Sub arn:aws:quicksight:${AWS::Region}:${AwsAccountId}:user/default/${QuickSightUsername}
+          Actions:
+            - quicksight:DescribeDataSet
+            - quicksight:DescribeDataSetPermissions
+            - quicksight:PassDataSet
+            - quicksight:DescribeIngestion
+            - quicksight:ListIngestions
+            - quicksight:UpdateDataSet
+            - quicksight:DeleteDataSet
+            - quicksight:CreateIngestion
+            - quicksight:CancelIngestion
+            - quicksight:UpdateDataSetPermissions
+
+  # ============================================================
+  # Dataset 6: Practice Alignment Performance (12 Weeks)
+  # ============================================================
+  PracticePerformanceDataset:
+    Type: AWS::QuickSight::DataSet
+    DependsOn: ClockifyDataSource
+    Properties:
+      AwsAccountId: !Ref AwsAccountId
+      DataSetId: !Sub clockify-practice-performance-${Environment}
+      Name: !Sub Practice Alignment Performance (${Environment})
+      ImportMode: SPICE
+      PhysicalTableMap:
+        PracticePerformanceTable:
+          RelationalTable:
+            DataSourceArn: !GetAtt ClockifyDataSource.Arn
+            Schema: public
+            Name: vw_practice_alignment_performance_12w
+            InputColumns:
+              - Name: week_start_date
+                Type: DATETIME
+              - Name: practice_alignment
+                Type: STRING
+              - Name: unique_resources
+                Type: INTEGER
+              - Name: total_hours
+                Type: DECIMAL
+              - Name: billable_hours
+                Type: DECIMAL
+              - Name: billable_percent
+                Type: DECIMAL
+              - Name: active_projects
+                Type: INTEGER
+              - Name: active_clients
+                Type: INTEGER
+      LogicalTableMap:
+        PracticePerformanceLogical:
+          Alias: Practice Performance
+          Source:
+            PhysicalTableId: PracticePerformanceTable
+      Permissions:
+        - Principal: !Sub arn:aws:quicksight:${AWS::Region}:${AwsAccountId}:user/default/${QuickSightUsername}
+          Actions:
+            - quicksight:DescribeDataSet
+            - quicksight:DescribeDataSetPermissions
+            - quicksight:PassDataSet
+            - quicksight:DescribeIngestion
+            - quicksight:ListIngestions
+            - quicksight:UpdateDataSet
+            - quicksight:DeleteDataSet
+            - quicksight:CreateIngestion
+            - quicksight:CancelIngestion
+            - quicksight:UpdateDataSetPermissions
+
+  # ============================================================
+  # Dataset 7: Monthly Summary View (Enhanced with Pod Assignment)
+  # ============================================================
+  MonthlySummaryDataset:
+    Type: AWS::QuickSight::DataSet
+    DependsOn: ClockifyDataSource
+    Properties:
+      AwsAccountId: !Ref AwsAccountId
+      DataSetId: !Sub clockify-monthly-summary-${Environment}
+      Name: !Sub Monthly Summary (${Environment})
+      ImportMode: SPICE
+      PhysicalTableMap:
+        MonthlySummaryTable:
+          RelationalTable:
+            DataSourceArn: !GetAtt ClockifyDataSource.Arn
+            Schema: public
+            Name: vw_monthly_summary
+            InputColumns:
+              - Name: month_start_date
+                Type: DATETIME
+              - Name: year_month
+                Type: STRING
+              - Name: practice_alignment
+                Type: STRING
+              - Name: pod_assignment
+                Type: STRING
+              - Name: location
+                Type: STRING
+              - Name: unique_resources
+                Type: INTEGER
+              - Name: total_hours
+                Type: DECIMAL
+              - Name: billable_hours
+                Type: DECIMAL
+              - Name: billable_percent
+                Type: DECIMAL
+              - Name: active_projects
+                Type: INTEGER
+              - Name: active_clients
+                Type: INTEGER
+              - Name: avg_hours_per_entry
+                Type: DECIMAL
+      LogicalTableMap:
+        MonthlySummaryLogical:
+          Alias: Monthly Summary
+          Source:
+            PhysicalTableId: MonthlySummaryTable
+      Permissions:
+        - Principal: !Sub arn:aws:quicksight:${AWS::Region}:${AwsAccountId}:user/default/${QuickSightUsername}
+          Actions:
+            - quicksight:DescribeDataSet
+            - quicksight:DescribeDataSetPermissions
+            - quicksight:PassDataSet
+            - quicksight:DescribeIngestion
+            - quicksight:ListIngestions
+            - quicksight:UpdateDataSet
+            - quicksight:DeleteDataSet
+            - quicksight:CreateIngestion
+            - quicksight:CancelIngestion
+            - quicksight:UpdateDataSetPermissions
+
+  # ============================================================
+  # Dataset 8: Skill Area Summary View
+  # ============================================================
+  SkillAreaSummaryDataset:
+    Type: AWS::QuickSight::DataSet
+    DependsOn: ClockifyDataSource
+    Properties:
+      AwsAccountId: !Ref AwsAccountId
+      DataSetId: !Sub clockify-skill-area-summary-${Environment}
+      Name: !Sub Skill Area Summary (${Environment})
+      ImportMode: SPICE
+      PhysicalTableMap:
+        SkillAreaSummaryTable:
+          RelationalTable:
+            DataSourceArn: !GetAtt ClockifyDataSource.Arn
+            Schema: public
+            Name: vw_skill_area_summary
+            InputColumns:
+              - Name: week_start_date
+                Type: DATETIME
+              - Name: skill_area
+                Type: STRING
+              - Name: practice_alignment
+                Type: STRING
+              - Name: pod_assignment
+                Type: STRING
+              - Name: location
+                Type: STRING
+              - Name: unique_resources
+                Type: INTEGER
+              - Name: total_hours
+                Type: DECIMAL
+              - Name: billable_hours
+                Type: DECIMAL
+      LogicalTableMap:
+        SkillAreaSummaryLogical:
+          Alias: Skill Area Summary
+          Source:
+            PhysicalTableId: SkillAreaSummaryTable
+      Permissions:
+        - Principal: !Sub arn:aws:quicksight:${AWS::Region}:${AwsAccountId}:user/default/${QuickSightUsername}
+          Actions:
+            - quicksight:DescribeDataSet
+            - quicksight:DescribeDataSetPermissions
+            - quicksight:PassDataSet
+            - quicksight:DescribeIngestion
+            - quicksight:ListIngestions
+            - quicksight:UpdateDataSet
+            - quicksight:DeleteDataSet
+            - quicksight:CreateIngestion
+            - quicksight:CancelIngestion
+            - quicksight:UpdateDataSetPermissions
+
+  # ============================================================
+  # Dataset 9: Daily Activity Trend View
+  # ============================================================
+  DailyActivityTrendDataset:
+    Type: AWS::QuickSight::DataSet
+    DependsOn: ClockifyDataSource
+    Properties:
+      AwsAccountId: !Ref AwsAccountId
+      DataSetId: !Sub clockify-daily-activity-trend-${Environment}
+      Name: !Sub Daily Activity Trend (${Environment})
+      ImportMode: SPICE
+      PhysicalTableMap:
+        DailyActivityTrendTable:
+          RelationalTable:
+            DataSourceArn: !GetAtt ClockifyDataSource.Arn
+            Schema: public
+            Name: vw_daily_activity_trend
+            InputColumns:
+              - Name: entry_date
+                Type: DATETIME
+              - Name: day_of_week
+                Type: DECIMAL
+              - Name: day_name
+                Type: STRING
+              - Name: practice_alignment
+                Type: STRING
+              - Name: location
+                Type: STRING
+              - Name: active_resources
+                Type: INTEGER
+              - Name: total_hours
+                Type: DECIMAL
+              - Name: billable_hours
+                Type: DECIMAL
+              - Name: entry_count
+                Type: INTEGER
+      LogicalTableMap:
+        DailyActivityTrendLogical:
+          Alias: Daily Activity Trend
+          Source:
+            PhysicalTableId: DailyActivityTrendTable
+      Permissions:
+        - Principal: !Sub arn:aws:quicksight:${AWS::Region}:${AwsAccountId}:user/default/${QuickSightUsername}
+          Actions:
+            - quicksight:DescribeDataSet
+            - quicksight:DescribeDataSetPermissions
+            - quicksight:PassDataSet
+            - quicksight:DescribeIngestion
+            - quicksight:ListIngestions
+            - quicksight:UpdateDataSet
+            - quicksight:DeleteDataSet
+            - quicksight:CreateIngestion
+            - quicksight:CancelIngestion
+            - quicksight:UpdateDataSetPermissions
+
+  # ============================================================
+  # Dataset 10: Import Activity View
+  # ============================================================
+  ImportActivityDataset:
+    Type: AWS::QuickSight::DataSet
+    DependsOn: ClockifyDataSource
+    Properties:
+      AwsAccountId: !Ref AwsAccountId
+      DataSetId: !Sub clockify-import-activity-${Environment}
+      Name: !Sub Import Activity (${Environment})
+      ImportMode: SPICE
+      PhysicalTableMap:
+        ImportActivityTable:
+          RelationalTable:
+            DataSourceArn: !GetAtt ClockifyDataSource.Arn
+            Schema: public
+            Name: vw_import_activity
+            InputColumns:
+              - Name: log_id
+                Type: INTEGER
+              - Name: import_type
+                Type: STRING
+              - Name: import_category
+                Type: STRING
+              - Name: start_date
+                Type: DATETIME
+              - Name: end_date
+                Type: DATETIME
+              - Name: records_imported
+                Type: INTEGER
+              - Name: records_updated
+                Type: INTEGER
+              - Name: records_skipped
+                Type: INTEGER
+              - Name: status
+                Type: STRING
+              - Name: error_message
+                Type: STRING
+              - Name: started_at
+                Type: DATETIME
+              - Name: completed_at
+                Type: DATETIME
+              - Name: duration_seconds
+                Type: DECIMAL
+      LogicalTableMap:
+        ImportActivityLogical:
+          Alias: Import Activity
+          Source:
+            PhysicalTableId: ImportActivityTable
+      Permissions:
+        - Principal: !Sub arn:aws:quicksight:${AWS::Region}:${AwsAccountId}:user/default/${QuickSightUsername}
+          Actions:
+            - quicksight:DescribeDataSet
+            - quicksight:DescribeDataSetPermissions
+            - quicksight:PassDataSet
+            - quicksight:DescribeIngestion
+            - quicksight:ListIngestions
+            - quicksight:UpdateDataSet
+            - quicksight:DeleteDataSet
+            - quicksight:CreateIngestion
+            - quicksight:CancelIngestion
+            - quicksight:UpdateDataSetPermissions
+
+  # ============================================================
+  # Dataset 11: Pod Performance Analysis
+  # ============================================================
+  PodPerformanceDataset:
+    Type: AWS::QuickSight::DataSet
+    DependsOn: ClockifyDataSource
+    Properties:
+      AwsAccountId: !Ref AwsAccountId
+      DataSetId: !Sub clockify-pod-performance-${Environment}
+      Name: !Sub Pod Performance Analysis (${Environment})
+      ImportMode: SPICE
+      PhysicalTableMap:
+        PodPerformanceTable:
+          RelationalTable:
+            DataSourceArn: !GetAtt ClockifyDataSource.Arn
+            Schema: public
+            Name: vw_pod_performance_analysis
+            InputColumns:
+              - Name: pod_name
+                Type: STRING
+              - Name: last_week_hours
+                Type: DECIMAL
+              - Name: avg_4_week_hours
+                Type: DECIMAL
+              - Name: avg_12_week_hours
+                Type: DECIMAL
+              - Name: previous_week_hours
+                Type: DECIMAL
+              - Name: last_week_billable_hours
+                Type: DECIMAL
+              - Name: last_week_resources
+                Type: INTEGER
+              - Name: variance_vs_4_week
+                Type: DECIMAL
+              - Name: variance_vs_12_week
+                Type: DECIMAL
+              - Name: pct_change_vs_4_week
+                Type: DECIMAL
+              - Name: pct_change_vs_12_week
+                Type: DECIMAL
+              - Name: weekly_trend
+                Type: STRING
+              - Name: last_week_billable_pct
+                Type: DECIMAL
+              - Name: performance_vs_4_week
+                Type: STRING
+              - Name: last_week_date
+                Type: DATETIME
+      LogicalTableMap:
+        PodPerformanceLogical:
+          Alias: Pod Performance Analysis
+          Source:
+            PhysicalTableId: PodPerformanceTable
+      Permissions:
+        - Principal: !Sub arn:aws:quicksight:${AWS::Region}:${AwsAccountId}:user/default/${QuickSightUsername}
+          Actions:
+            - quicksight:DescribeDataSet
+            - quicksight:DescribeDataSetPermissions
+            - quicksight:PassDataSet
+            - quicksight:DescribeIngestion
+            - quicksight:ListIngestions
+            - quicksight:UpdateDataSet
+            - quicksight:DeleteDataSet
+            - quicksight:CreateIngestion
+            - quicksight:CancelIngestion
+            - quicksight:UpdateDataSetPermissions
+
+  # ============================================================
+  # Dataset 12: Active Resources View
+  # ============================================================
+  ActiveResourcesDataset:
+    Type: AWS::QuickSight::DataSet
+    DependsOn: ClockifyDataSource
+    Properties:
+      AwsAccountId: !Ref AwsAccountId
+      DataSetId: !Sub clockify-active-resources-${Environment}
+      Name: !Sub Active Resources (${Environment})
+      ImportMode: SPICE
+      PhysicalTableMap:
+        ActiveResourcesTable:
+          RelationalTable:
+            DataSourceArn: !GetAtt ClockifyDataSource.Arn
+            Schema: public
+            Name: vw_active_resources
+            InputColumns:
+              - Name: clockify_user_id
+                Type: STRING
+              - Name: name
+                Type: STRING
+              - Name: email
+                Type: STRING
+              - Name: cloudelligent_title
+                Type: STRING
+              - Name: practice_alignment
+                Type: STRING
+              - Name: skill_area
+                Type: STRING
+              - Name: pod_assignment
+                Type: STRING
+              - Name: location
+                Type: STRING
+              - Name: employment_designation
+                Type: STRING
+              - Name: daily_capacity
+                Type: DECIMAL
+              - Name: status
+                Type: STRING
+              - Name: last_profile_update
+                Type: DATETIME
+              - Name: last_time_entry_date
+                Type: DATETIME
+              - Name: hours_last_30_days
+                Type: DECIMAL
+      LogicalTableMap:
+        ActiveResourcesLogical:
+          Alias: Active Resources
+          Source:
+            PhysicalTableId: ActiveResourcesTable
+      Permissions:
+        - Principal: !Sub arn:aws:quicksight:${AWS::Region}:${AwsAccountId}:user/default/${QuickSightUsername}
+          Actions:
+            - quicksight:DescribeDataSet
+            - quicksight:DescribeDataSetPermissions
+            - quicksight:PassDataSet
+            - quicksight:DescribeIngestion
+            - quicksight:ListIngestions
+            - quicksight:UpdateDataSet
+            - quicksight:DeleteDataSet
+            - quicksight:CreateIngestion
+            - quicksight:CancelIngestion
+            - quicksight:UpdateDataSetPermissions
+
+  # ============================================================
+  # Dataset 13: Missing Time Submissions View (non-compliant only — legacy, kept for backward compat)
+  # ============================================================
+  MissingTimeSubmissionsDataset:
+    Type: AWS::QuickSight::DataSet
+    DependsOn: ClockifyDataSource
+    Properties:
+      AwsAccountId: !Ref AwsAccountId
+      DataSetId: !Sub clockify-missing-time-submissions-${Environment}
+      Name: !Sub Missing Time Submissions (${Environment})
+      ImportMode: SPICE
+      PhysicalTableMap:
+        MissingTimeSubmissionsTable:
+          CustomSql:
+            DataSourceArn: !GetAtt ClockifyDataSource.Arn
+            Name: MissingTimeSubmissions
+            # Use custom SQL to explicitly cast last_updated_time to TEXT (QuickSight doesn't support TIME type)
+            SqlQuery: >-
+              SELECT clockify_user_id, name, email, pod_assignment, practice_alignment,
+              skill_area, location, daily_capacity, weekly_expected_hours, hours_submitted,
+              entries_submitted, submission_status, week_start_date, last_updated_date,
+              last_updated_time::TEXT AS last_updated_time
+              FROM public.vw_missing_time_submissions
+            Columns:
+              - Name: clockify_user_id
+                Type: STRING
+              - Name: name
+                Type: STRING
+              - Name: email
+                Type: STRING
+              - Name: pod_assignment
+                Type: STRING
+              - Name: practice_alignment
+                Type: STRING
+              - Name: skill_area
+                Type: STRING
+              - Name: location
+                Type: STRING
+              - Name: daily_capacity
+                Type: DECIMAL
+              - Name: weekly_expected_hours
+                Type: DECIMAL
+              - Name: hours_submitted
+                Type: DECIMAL
+              - Name: entries_submitted
+                Type: INTEGER
+              - Name: submission_status
+                Type: STRING
+              - Name: week_start_date
+                Type: DATETIME
+              - Name: last_updated_date
+                Type: DATETIME
+              - Name: last_updated_time
+                Type: STRING
+      LogicalTableMap:
+        MissingTimeSubmissionsLogical:
+          Alias: Missing Time Submissions
+          Source:
+            PhysicalTableId: MissingTimeSubmissionsTable
+      Permissions:
+        - Principal: !Sub arn:aws:quicksight:${AWS::Region}:${AwsAccountId}:user/default/${QuickSightUsername}
+          Actions:
+            - quicksight:DescribeDataSet
+            - quicksight:DescribeDataSetPermissions
+            - quicksight:PassDataSet
+            - quicksight:DescribeIngestion
+            - quicksight:ListIngestions
+            - quicksight:UpdateDataSet
+            - quicksight:DeleteDataSet
+            - quicksight:CreateIngestion
+            - quicksight:CancelIngestion
+            - quicksight:UpdateDataSetPermissions
+
+  # ============================================================
+  # Dataset 14: Weekly Compliance Report (all staff + submission_status — replaces missing-time for COO dashboard)
+  # ============================================================
+  WeeklyComplianceReportDataset:
+    Type: AWS::QuickSight::DataSet
+    DependsOn: ClockifyDataSource
+    Properties:
+      AwsAccountId: !Ref AwsAccountId
+      DataSetId: !Sub time-compliance-current-week-${Environment}
+      Name: !Sub Weekly Compliance Report (${Environment})
+      ImportMode: SPICE
+      PhysicalTableMap:
+        WeeklyComplianceReportTable:
+          CustomSql:
+            DataSourceArn: !GetAtt ClockifyDataSource.Arn
+            Name: WeeklyComplianceReport
+            SqlQuery: >-
+              SELECT employee_name, pod_assignment, practice_alignment, skill_area,
+              cloudelligent_title, location, employment_designation,
+              weekly_expected_hours, hours_submitted, entry_count,
+              submission_status, is_compliant, week_start_date,
+              last_updated_date, last_updated_time::TEXT AS last_updated_time
+              FROM public.vw_weekly_compliance_report
+            Columns:
+              - Name: employee_name
+                Type: STRING
+              - Name: pod_assignment
+                Type: STRING
+              - Name: practice_alignment
+                Type: STRING
+              - Name: skill_area
+                Type: STRING
+              - Name: cloudelligent_title
+                Type: STRING
+              - Name: location
+                Type: STRING
+              - Name: employment_designation
+                Type: STRING
+              - Name: weekly_expected_hours
+                Type: DECIMAL
+              - Name: hours_submitted
+                Type: DECIMAL
+              - Name: entry_count
+                Type: INTEGER
+              - Name: submission_status
+                Type: STRING
+              - Name: is_compliant
+                Type: INTEGER
+              - Name: week_start_date
+                Type: DATETIME
+              - Name: last_updated_date
+                Type: DATETIME
+              - Name: last_updated_time
+                Type: STRING
+      LogicalTableMap:
+        WeeklyComplianceReportLogical:
+          Alias: Weekly Compliance Report
+          Source:
+            PhysicalTableId: WeeklyComplianceReportTable
+      Permissions:
+        - Principal: !Sub arn:aws:quicksight:${AWS::Region}:${AwsAccountId}:user/default/${QuickSightUsername}
+          Actions:
+            - quicksight:DescribeDataSet
+            - quicksight:DescribeDataSetPermissions
+            - quicksight:PassDataSet
+            - quicksight:DescribeIngestion
+            - quicksight:ListIngestions
+            - quicksight:UpdateDataSet
+            - quicksight:DeleteDataSet
+            - quicksight:CreateIngestion
+            - quicksight:CancelIngestion
+            - quicksight:UpdateDataSetPermissions
+
+  # ============================================================
+  # Dashboard 1: Executive Summary Dashboard
+  # ============================================================
+  ExecutiveDashboard:
+    Type: AWS::QuickSight::Dashboard
+    DependsOn: 
+      - MonthlySummaryDataset
+      - PracticePerformanceDataset
+      - ResourceUtilizationDataset
+    Properties:
+      AwsAccountId: !Ref AwsAccountId
+      DashboardId: !Sub clockify-executive-dashboard-${Environment}
+      Name: !Sub Clockify Executive Dashboard (${Environment})
+      Definition:
+        DataSetIdentifierDeclarations:
+          - DataSetArn: !GetAtt MonthlySummaryDataset.Arn
+            DataSetIdentifier: monthly_summary
+          - DataSetArn: !GetAtt PracticePerformanceDataset.Arn
+            DataSetIdentifier: practice_performance
+          - DataSetArn: !GetAtt ResourceUtilizationDataset.Arn
+            DataSetIdentifier: resource_utilization
+        Sheets:
+          - SheetId: executive_overview
+            Name: Executive Overview
+            Visuals:
+              - BarChartVisual:
+                  VisualId: monthly_hours_by_practice
+                  Title:
+                    Visibility: VISIBLE
+                    FormatText:
+                      PlainText: Monthly Hours by Practice Alignment
+                  ChartConfiguration:
+                    FieldWells:
+                      BarChartAggregatedFieldWells:
+                        Category:
+                          - CategoricalDimensionField:
+                              FieldId: practice_alignment
+                              Column:
+                                DataSetIdentifier: monthly_summary
+                                ColumnName: practice_alignment
+                        Values:
+                          - NumericalMeasureField:
+                              FieldId: total_hours
+                              Column:
+                                DataSetIdentifier: monthly_summary
+                                ColumnName: total_hours
+                              AggregationFunction:
+                                SimpleNumericalAggregation: SUM
+              - PieChartVisual:
+                  VisualId: pod_distribution
+                  Title:
+                    Visibility: VISIBLE
+                    FormatText:
+                      PlainText: Hours Distribution by Pod Assignment
+                  ChartConfiguration:
+                    FieldWells:
+                      PieChartAggregatedFieldWells:
+                        Category:
+                          - CategoricalDimensionField:
+                              FieldId: pod_assignment
+                              Column:
+                                DataSetIdentifier: monthly_summary
+                                ColumnName: pod_assignment
+                        Values:
+                          - NumericalMeasureField:
+                              FieldId: total_hours_pod
+                              Column:
+                                DataSetIdentifier: monthly_summary
+                                ColumnName: total_hours
+                              AggregationFunction:
+                                SimpleNumericalAggregation: SUM
+      Permissions:
+        - Principal: !Sub arn:aws:quicksight:${AWS::Region}:${AwsAccountId}:user/default/${QuickSightUsername}
+          Actions:
+            - quicksight:DescribeDashboard
+            - quicksight:ListDashboardVersions
+            - quicksight:UpdateDashboardPermissions
+            - quicksight:QueryDashboard
+            - quicksight:UpdateDashboard
+            - quicksight:DeleteDashboard
+            - quicksight:DescribeDashboardPermissions
+            - quicksight:ExportToCsv
+
+  # ============================================================
+  # Dashboard 4: Pod Performance Analysis Dashboard
+  # ============================================================
+  PodPerformanceDashboard:
+    Type: AWS::QuickSight::Dashboard
+    DependsOn: 
+      - PodPerformanceDataset
+    Properties:
+      AwsAccountId: !Ref AwsAccountId
+      DashboardId: !Sub clockify-pod-performance-${Environment}
+      Name: !Sub Pod Performance Analysis (${Environment})
+      Definition:
+        DataSetIdentifierDeclarations:
+          - DataSetArn: !GetAtt PodPerformanceDataset.Arn
+            DataSetIdentifier: pod_performance
+        Sheets:
+          - SheetId: pod_performance_overview
+            Name: Pod Performance Overview
+            Visuals:
+              - TableVisual:
+                  VisualId: pod_performance_table
+                  Title:
+                    Visibility: VISIBLE
+                    FormatText:
+                      PlainText: Pod Performance Summary
+                  Subtitle:
+                    Visibility: VISIBLE
+                    FormatText:
+                      PlainText: Last week vs 4-week and 12-week averages with trend indicators
+                  ChartConfiguration:
+                    FieldWells:
+                      TableAggregatedFieldWells:
+                        GroupBy:
+                          - CategoricalDimensionField:
+                              FieldId: pod_name
+                              Column:
+                                DataSetIdentifier: pod_performance
+                                ColumnName: pod_name
+                        Values:
+                          - NumericalMeasureField:
+                              FieldId: last_week_hours
+                              Column:
+                                DataSetIdentifier: pod_performance
+                                ColumnName: last_week_hours
+                              AggregationFunction:
+                                SimpleNumericalAggregation: SUM
+                          - NumericalMeasureField:
+                              FieldId: avg_4_week_hours
+                              Column:
+                                DataSetIdentifier: pod_performance
+                                ColumnName: avg_4_week_hours
+                              AggregationFunction:
+                                SimpleNumericalAggregation: MAX
+                          - NumericalMeasureField:
+                              FieldId: avg_12_week_hours
+                              Column:
+                                DataSetIdentifier: pod_performance
+                                ColumnName: avg_12_week_hours
+                              AggregationFunction:
+                                SimpleNumericalAggregation: MAX
+                          - NumericalMeasureField:
+                              FieldId: pct_change_vs_4_week
+                              Column:
+                                DataSetIdentifier: pod_performance
+                                ColumnName: pct_change_vs_4_week
+                              AggregationFunction:
+                                SimpleNumericalAggregation: MAX
+                          - CategoricalDimensionField:
+                              FieldId: weekly_trend
+                              Column:
+                                DataSetIdentifier: pod_performance
+                                ColumnName: weekly_trend
+                    TableOptions:
+                      CellStyle:
+                        Height: 25
+                      HeaderStyle:
+                        Height: 25
+                        TextWrap: WRAP
+              - BarChartVisual:
+                  VisualId: pod_hours_comparison
+                  Title:
+                    Visibility: VISIBLE
+                    FormatText:
+                      PlainText: Pod Hours Comparison - Last Week vs Averages
+                  ChartConfiguration:
+                    FieldWells:
+                      BarChartAggregatedFieldWells:
+                        Category:
+                          - CategoricalDimensionField:
+                              FieldId: pod_name_chart
+                              Column:
+                                DataSetIdentifier: pod_performance
+                                ColumnName: pod_name
+                        Values:
+                          - NumericalMeasureField:
+                              FieldId: last_week_hours_chart
+                              Column:
+                                DataSetIdentifier: pod_performance
+                                ColumnName: last_week_hours
+                              AggregationFunction:
+                                SimpleNumericalAggregation: SUM
+                          - NumericalMeasureField:
+                              FieldId: avg_4_week_hours_chart
+                              Column:
+                                DataSetIdentifier: pod_performance
+                                ColumnName: avg_4_week_hours
+                              AggregationFunction:
+                                SimpleNumericalAggregation: MAX
+                          - NumericalMeasureField:
+                              FieldId: avg_12_week_hours_chart
+                              Column:
+                                DataSetIdentifier: pod_performance
+                                ColumnName: avg_12_week_hours
+                              AggregationFunction:
+                                SimpleNumericalAggregation: MAX
+                    Legend:
+                      Visibility: VISIBLE
+                      Position: RIGHT
+              - KPIVisual:
+                  VisualId: free_agent_kpi
+                  Title:
+                    Visibility: VISIBLE
+                    FormatText:
+                      PlainText: Free Agent Performance
+                  ChartConfiguration:
+                    FieldWells:
+                      Values:
+                        - NumericalMeasureField:
+                            FieldId: free_agent_hours
+                            Column:
+                              DataSetIdentifier: pod_performance
+                              ColumnName: last_week_hours
+                            AggregationFunction:
+                              SimpleNumericalAggregation: SUM
+                      TargetValues:
+                        - NumericalMeasureField:
+                            FieldId: free_agent_target
+                            Column:
+                              DataSetIdentifier: pod_performance
+                              ColumnName: avg_4_week_hours
+                            AggregationFunction:
+                              SimpleNumericalAggregation: MAX
+                    KPIOptions:
+                      Comparison:
+                        ComparisonMethod: PERCENT_DIFFERENCE
+                        ComparisonFormat:
+                          NumberDisplayFormatConfiguration:
+                            NumberScale: NONE
+                            NegativeValueConfiguration:
+                              DisplayMode: NEGATIVE
+                      PrimaryValueDisplayType: ACTUAL
+                      ProgressBar:
+                        Visibility: VISIBLE
+                    ConditionalFormatting:
+                      ConditionalFormattingOptions:
+                        - PrimaryValue:
+                            TextColor:
+                              Solid:
+                                Expression: "IF({last_week_hours} > {avg_4_week_hours}, '#00AA00', IF({last_week_hours} < {avg_4_week_hours}, '#FF0000', '#000000'))"
+              - GaugeChartVisual:
+                  VisualId: trend_indicators
+                  Title:
+                    Visibility: VISIBLE
+                    FormatText:
+                      PlainText: Pod Trend Indicators
+                  ChartConfiguration:
+                    FieldWells:
+                      Values:
+                        - NumericalMeasureField:
+                            FieldId: trend_value
+                            Column:
+                              DataSetIdentifier: pod_performance
+                              ColumnName: pct_change_vs_4_week
+                            AggregationFunction:
+                              SimpleNumericalAggregation: MAX
+                      TargetValues:
+                        - NumericalMeasureField:
+                            FieldId: trend_target
+                            Column:
+                              DataSetIdentifier: pod_performance
+                              ColumnName: pct_change_vs_12_week
+                            AggregationFunction:
+                              SimpleNumericalAggregation: MAX
+                    GaugeChartOptions:
+                      PrimaryValueDisplayType: ACTUAL
+                      Comparison:
+                        ComparisonMethod: PERCENT_DIFFERENCE
+      Permissions:
+        - Principal: !Sub arn:aws:quicksight:${AWS::Region}:${AwsAccountId}:user/default/${QuickSightUsername}
+          Actions:
+            - quicksight:DescribeDashboard
+            - quicksight:ListDashboardVersions
+            - quicksight:UpdateDashboardPermissions
+            - quicksight:QueryDashboard
+            - quicksight:UpdateDashboard
+            - quicksight:DeleteDashboard
+            - quicksight:DescribeDashboardPermissions
+            - quicksight:ExportToCsv
+
+Outputs:
+  DataSourceArn:
+    Description: QuickSight Data Source ARN
+    Value: !GetAtt ClockifyDataSource.Arn
+
+  TimeEntriesDatasetArn:
+    Description: Time Entries Dataset ARN
+    Value: !GetAtt TimeEntriesDataset.Arn
+
+  ResourceUtilizationDatasetArn:
+    Description: Resource Utilization Dataset ARN
+    Value: !GetAtt ResourceUtilizationDataset.Arn
+
+  WeeklyTimeSummaryDatasetArn:
+    Description: Weekly Time Summary Dataset ARN
+    Value: !GetAtt WeeklyTimeSummaryDataset.Arn
+
+  ProjectTrackingDatasetArn:
+    Description: Project Tracking Dataset ARN
+    Value: !GetAtt ProjectTrackingDataset.Arn
+
+  ClientSummaryDatasetArn:
+    Description: Client Summary Dataset ARN
+    Value: !GetAtt ClientSummaryDataset.Arn
+
+  PracticePerformanceDatasetArn:
+    Description: Practice Performance Dataset ARN
+    Value: !GetAtt PracticePerformanceDataset.Arn
+
+  ActiveResourcesDatasetArn:
+    Description: Active Resources Dataset ARN
+    Value: !GetAtt ActiveResourcesDataset.Arn
+
+  MonthlySummaryDatasetArn:
+    Description: Monthly Summary Dataset ARN
+    Value: !GetAtt MonthlySummaryDataset.Arn
+
+  PodPerformanceDatasetArn:
+    Description: Pod Performance Analysis Dataset ARN
+    Value: !GetAtt PodPerformanceDataset.Arn
+
+  SkillAreaSummaryDatasetArn:
+    Description: Skill Area Summary Dataset ARN
+    Value: !GetAtt SkillAreaSummaryDataset.Arn
+
+  DailyActivityTrendDatasetArn:
+    Description: Daily Activity Trend Dataset ARN
+    Value: !GetAtt DailyActivityTrendDataset.Arn
+
+  ImportActivityDatasetArn:
+    Description: Import Activity Dataset ARN
+    Value: !GetAtt ImportActivityDataset.Arn
+
+  ExecutiveDashboardArn:
+    Description: Executive Dashboard ARN
+    Value: !GetAtt ExecutiveDashboard.Arn
+
+  ExecutiveDashboardUrl:
+    Description: Executive Dashboard URL
+    Value: !Sub https://${AWS::Region}.quicksight.aws.amazon.com/sn/dashboards/${ExecutiveDashboard}
+
+  PodPerformanceDashboardArn:
+    Description: Pod Performance Dashboard ARN
+    Value: !GetAtt PodPerformanceDashboard.Arn
+
+  PodPerformanceDashboardUrl:
+    Description: Pod Performance Dashboard URL
+    Value: !Sub https://${AWS::Region}.quicksight.aws.amazon.com/sn/dashboards/${PodPerformanceDashboard}
+
+  MissingTimeSubmissionsDatasetArn:
+    Description: Missing Time Submissions Dataset ARN
+    Value: !GetAtt MissingTimeSubmissionsDataset.Arn

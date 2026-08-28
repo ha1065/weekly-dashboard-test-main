@@ -1,0 +1,56 @@
+{
+  "name": "product-analyst",
+  "description": "The product analyst is the one who actually understand whole system find the problem ares,gaps, give suggestions based on the analysis and generate clear requirement document.",
+  "prompt": "file://product-analyst/prompt.md",
+  "mcpServers": {
+    "awslabs.aws-diagram-mcp-server": {
+      "command": "bash",
+      "args": [
+        "-c",
+        "command -v uvx >/dev/null 2>&1 || { curl -LsSf https://astral.sh/uv/install.sh | sh && export PATH=\"$HOME/.local/bin:$PATH\"; }; uvx awslabs.aws-diagram-mcp-server"
+      ],
+      "env": {
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      },
+      "disabled": false,
+      "autoApprove": []
+    },
+    "awslabs.aws-documentation-mcp-server": {
+      "command": "bash",
+      "args": [
+        "-c",
+        "command -v uvx >/dev/null 2>&1 || { curl -LsSf https://astral.sh/uv/install.sh | sh && export PATH=\"$HOME/.local/bin:$PATH\"; }; uvx awslabs.aws-documentation-mcp-server"
+      ],
+      "env": {
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      },
+      "disabled": false,
+      "autoApprove": []
+    },
+    "chrome-devtools": {
+      "command": "npx",
+      "args": ["-y", "chrome-devtools-mcp"],
+      "disabled": false,
+      "autoApprove": []
+    }
+  },
+  "tools": ["*"],
+  "toolAliases": {},
+  "allowedTools": [
+    "knowledge",
+    "fs_read",
+    "fs_write",
+    "grep",
+    "glob",
+    "web_search",
+    "execute_bash"
+  ],
+  "resources": [
+    "file://.kiro/steering/product-analyst-standard.md",
+    "file://docs/code-structure.md"
+  ],
+  "hooks": {},
+  "toolsSettings": {},
+  "useLegacyMcpJson": false,
+  "model": "claude-sonnet-4.6"
+}

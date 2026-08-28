@@ -1,0 +1,52 @@
+{
+  "name": "code-reviewer",
+  "description": "Code Reviewer (Team Lead) - Reviews backend and frontend code for quality, security, performance, and adherence to project standards. Read-only — does not modify code.",
+  "prompt": "file://./code-reviewer/prompt.md",
+  "welcomeMessage": "Code reviewer ready. What should I review?",
+  "tools": ["read", "grep", "glob", "code", "shell", "knowledge"],
+  "allowedTools": ["read", "grep", "glob", "code", "knowledge", "shell"],
+  "toolsSettings": {
+    "shell": {
+      "allowedCommands": [
+        "git diff.*",
+        "git log.*",
+        "git show.*",
+        "git blame.*",
+        "git branch.*",
+        "git status.*",
+        "npx eslint.*",
+        "npx prettier --check.*",
+        "npx tsc --noEmit.*",
+        "wc.*",
+        "cat.*",
+        "head.*",
+        "tail.*"
+      ],
+      "denyByDefault": true
+    }
+  },
+  "resources": [
+    "file://.kiro/steering/product.md",
+    "file://.kiro/steering/backend-standards.md",
+    "file://.kiro/steering/frontend-standards.md",
+    "file://.kiro/steering/lambda-docs.md",
+    "skill://.kiro/skills/backend/*/SKILL.md",
+    "skill://.kiro/skills/frontend/*/SKILL.md",
+    "skill://.kiro/skills/code-reviewer/*/SKILL.md",
+    "file://docs/code-structure.md"
+  ],
+  "hooks": {
+    "agentSpawn": [
+      {
+        "command": "git branch --show-current",
+        "timeout_ms": 3000
+      },
+      {
+        "command": "git diff --name-only HEAD~1 2>/dev/null || echo 'No previous commit to diff'",
+        "timeout_ms": 5000
+      }
+    ]
+  },
+  "includeMcpJson": false,
+  "model": "claude-sonnet-4.6"
+}

@@ -1,0 +1,35 @@
+{
+  "mcpServers": {
+    "awsiac": {
+      "args": [
+        "awslabs.aws-iac-mcp-server@latest"
+      ],
+      "command": "uvx"
+    },
+    "awsknowledge": {
+      "type": "http",
+      "url": "https://knowledge-mcp.global.api.aws"
+    },
+    "awspricing": {
+      "args": [
+        "awslabs.aws-pricing-mcp-server@latest"
+      ],
+      "command": "uvx",
+      "disabled": false,
+      "env": {
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      },
+      "timeout": 120000,
+      "type": "stdio"
+    },
+    "figma": {
+      "url": "https://mcp.figma.com/mcp",
+      "disabled": false,
+      "autoApprove": [
+        "get_screenshot",
+        "get_design_context",
+        "get_metadata"
+      ]
+    }
+  }
+}

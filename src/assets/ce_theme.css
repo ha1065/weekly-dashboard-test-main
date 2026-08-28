@@ -1,0 +1,131 @@
+/* Cloudelligent Branding Theme for Streamlit */
+
+/* Import Inter font */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+/* Root variables */
+:root {
+    --ce-primary: #0089DD;
+    --ce-orange: #FF9B00;
+    --ce-red: #D74018;
+    --ce-green: #33A94F;
+    --ce-dark: #27164F;
+    --ce-bg: #F4F3F7;
+}
+
+/* Global font */
+html, body, [class*="css"] {
+    font-family: 'Inter', sans-serif !important;
+}
+
+/* Main background */
+.stApp {
+    background-color: var(--ce-bg);
+}
+
+/* Sidebar styling */
+[data-testid="stSidebar"] {
+    background-color: var(--ce-dark);
+}
+[data-testid="stSidebar"] * {
+    color: #FFFFFF !important;
+}
+[data-testid="stSidebar"] .stRadio label {
+    color: #FFFFFF !important;
+}
+
+/* Headers */
+h1, h2, h3 {
+    color: var(--ce-dark) !important;
+    font-weight: 700 !important;
+}
+
+/* Metric cards */
+[data-testid="stMetric"] {
+    background-color: var(--ce-dark);
+    padding: 16px;
+    border-radius: 8px;
+}
+[data-testid="stMetric"] label {
+    color: #FFFFFF !important;
+}
+[data-testid="stMetric"] [data-testid="stMetricValue"] {
+    color: #FFFFFF !important;
+}
+
+/* Buttons */
+.stButton > button {
+    background-color: var(--ce-primary) !important;
+    color: #FFFFFF !important;
+    border: none !important;
+    border-radius: 6px !important;
+    font-weight: 600 !important;
+}
+.stButton > button:hover {
+    background-color: #006BB3 !important;
+}
+
+/* Tabs */
+.stTabs [data-baseweb="tab"] {
+    color: var(--ce-dark) !important;
+    font-weight: 500 !important;
+}
+.stTabs [aria-selected="true"] {
+    border-bottom-color: var(--ce-primary) !important;
+}
+
+/* Dataframes / tables */
+.stDataFrame {
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+/* Slider */
+.stSlider [data-baseweb="slider"] [role="slider"] {
+    background-color: var(--ce-primary) !important;
+}
+
+/* Info/warning boxes */
+.stAlert {
+    border-radius: 8px;
+}
+
+/* Cards */
+.stExpander {
+    border: 1px solid #E0DDE5;
+    border-radius: 8px;
+}
+
+/* Normalize subheader and section label fonts */
+[data-testid="stMarkdownContainer"] h4 {
+    color: var(--ce-dark) !important;
+    font-weight: 600 !important;
+    font-size: 1rem !important;
+    margin-top: 1rem !important;
+}
+
+/* Section divider consistency */
+hr {
+    border-color: #E0DDE5 !important;
+    margin: 1rem 0 !important;
+}
+
+/* Expander header font */
+.streamlit-expanderHeader {
+    font-weight: 600 !important;
+    color: var(--ce-dark) !important;
+    font-size: 0.95rem !important;
+}
+
+/* Caption text consistency */
+[data-testid="stCaptionContainer"] {
+    color: #6B7280 !important;
+    font-size: 0.8rem !important;
+}
+
+/* Subheader spacing */
+[data-testid="stHeadingWithActionElements"] h3 {
+    margin-bottom: 0.5rem !important;
+    padding-bottom: 0.25rem !important;
+    border-bottom: 2px solid var(--ce-primary) !important;
+}

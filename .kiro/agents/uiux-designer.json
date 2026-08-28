@@ -1,0 +1,30 @@
+{
+  "name": "uiux-designer",
+  "description": "Senior UI/UX Architect - Owns design systems, component architecture, Figma-to-code translation, and ensures scalable, consistent, and accessible UI across the product.",
+  "prompt": "file://./uiux-designer/prompt.md",
+  "tools": ["read", "write", "shell", "grep", "glob", "code", "aws", "knowledge", "todo"],
+  "allowedTools": ["read", "grep", "glob", "code", "knowledge"],
+  "toolsSettings": {
+    "write": {
+      "allowedPaths": ["./frontend/**", "./specs/**", "./docs/**"]
+    },
+    "shell": {
+      "autoAllowReadonly": true
+    }
+  },
+  "resources": [
+    "file://.kiro/steering/frontend-standards.md",
+    "file://docs/code-structure.md"
+  ],
+  "mcpServers": {
+    "figma-developer-mcp": {
+      "command": "npx",
+      "args": ["-y", "figma-developer-mcp", "--stdio"]
+    },
+    "figma-power-mcp": {
+      "command": "npx",
+      "args": ["-y", "figma-power-mcp", "--stdio"]
+    }
+  },
+  "model": "claude-sonnet-4.6"
+}
